@@ -16,6 +16,7 @@
 // help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ] - more EventIDs
 
 // help: [ https://docs.microsoft.com/en-us/cpp/cpp/main-function-command-line-args?view=msvc-170#customize ] - adding command line arguments and processing the list of arguments
+// help: [ https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499- ] - maintain consistency with windows error codes meaning
 
 #include <windows.h>
 #include <sddl.h>
@@ -157,12 +158,83 @@ cleanup:
 
 }
 
+void PrintHelp(wchar_t* argv[])
+{
+    wprintf(L"\nPrintHelp:\n");
+    wprintf(L"\"%s\" [PathToEventFile] [XPathFormattedQuery]\n", argv[0]);
+    wprintf(L"EXAMPLE: \"%s\" c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624]\n", argv[0]); // c:\Windows\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624]
+}
+
+void ShowArguments(int argc, wchar_t* argv[])
+{
+    wprintf(L"\nShowArguments:\n");
+    for (int i = 0; i < argc; i++)
+    {
+        wprintf(L"%d - \"%s\"\n", i, argv[i]);
+    }
+}
+
+void ShowEnvironment()
+{
+    // todo: need to make a collector function, which will allow easier access to environment
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstrings ] - get the environment in a block
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable ] - envp is not an official way of retrieving environment variables
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ] - best explanation of how it works
+    
+    LPTSTR lpszVariable;
+    LPTCH lpvEnv;
+
+    wprintf(L"\nShowEnvironment:\n");
+
+    // Get a pointer to the environment block.
+    lpvEnv = GetEnvironmentStringsW();
+
+    // If the returned pointer is NULL, exit.
+    if (lpvEnv == NULL)
+    {
+        wprintf(L"GetEnvironmentStringsW failed (%d)\n", GetLastError());
+        goto cleanup; 
+    }
+
+    // Variable strings are separated by NULL byte, and the block is 
+    // terminated by a NULL byte. 
+
+    lpszVariable = (LPTSTR)lpvEnv;
+
+    while (*lpszVariable)
+    {
+        wprintf(TEXT("%s\n"), lpszVariable);
+        lpszVariable += lstrlen(lpszVariable) + 1;
+    }
+
+cleanup:
+    if (NULL != lpvEnv)
+        FreeEnvironmentStringsW(lpvEnv);
+}
+
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
     const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
     const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
+
+    if (argc <= 1)
+    {
+        wprintf(L"Insufficient arguments provided!\n");
+        ShowArguments(argc, argv);
+        ShowEnvironment();
+        PrintHelp(argv); 
+        return ERROR_BAD_ARGUMENTS;
+    }
+    else if (argc > 3)
+    {
+        wprintf(L"Too many arguments provided!\n");
+        ShowArguments(argc, argv);
+        ShowEnvironment();
+        PrintHelp(argv);
+        return ERROR_BAD_ARGUMENTS;
+    }
     
-    return QueryEvents(pwsPath, pwsQuery);
+    return QueryEvents(argv[1], argv[2]);
 
     // todo: instead of printing raw XML events to console, need to add a JSON export file and which fields to include, then do more complex processing in Python, or skip this part and do all processing in Python
 }
