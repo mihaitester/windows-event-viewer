@@ -15,6 +15,8 @@
 // help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ] - lists some of the EventIDs that are of interest
 // help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ] - more EventIDs
 
+// help: [ https://docs.microsoft.com/en-us/cpp/cpp/main-function-command-line-args?view=msvc-170#customize ] - adding command line arguments and processing the list of arguments
+
 #include <windows.h>
 #include <sddl.h>
 #include <stdio.h>
