@@ -1,1 +1,5 @@
+# Readme
 I was thinking of trying to find security events that could indicate if my computer has been hacked and if there are weird things happening with my PC and one idea is to query the built in windows events and see what is happening with the OS. However using the powershell console or the default GUI viewer does not offer enough flexibility to create special filters which can track such dubious activity. Hence the idea is to use the Windows API and dump reports or actively track events and showcase alerts and notifications when something weird is taking place.
+
+# Similar projects
+* https://pypi.org/project/python-evtx/ - 
