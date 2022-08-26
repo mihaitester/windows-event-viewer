@@ -319,17 +319,17 @@ void WriteFile(LPCWSTR pwsDump)
 // help: [ https://docs.microsoft.com/en-us/cpp/c-runtime-library/string-manipulation-crt?source=recommendations&view=msvc-170 ]
 
 const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
-const int BUFF_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
+const int TIMESTAMP_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
 
 LPWSTR GetSystemTimestamp()
 {
     SYSTEMTIME st;
 
     // Allocate on the heap
-    LPWSTR timestamp = new WCHAR[BUFF_SIZE];
+    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
 
     GetSystemTime(&st);
-    swprintf(timestamp, BUFF_SIZE, L"%04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
     // wprintf(L"The system time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
     return timestamp;
@@ -338,14 +338,12 @@ LPWSTR GetSystemTimestamp()
 LPWSTR GetLocalTimestamp()
 {
     SYSTEMTIME lt;
-    const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
-    const int BUFF_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
 
     // Allocate on the heap
-    LPWSTR timestamp = new WCHAR[BUFF_SIZE];
+    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
 
     GetLocalTime(&lt);
-    swprintf(timestamp, BUFF_SIZE, L"%04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
+    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
     // wprintf(L" The local time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
 
     return timestamp;
