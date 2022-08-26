@@ -22,6 +22,7 @@
 #include <sddl.h>
 #include <stdio.h>
 #include <winevt.h>
+#include <strsafe.h>
 
 #pragma comment(lib, "wevtapi.lib")
 
@@ -122,7 +123,7 @@ cleanup:
     return status;
 }
 
-DWORD QueryEvents(LPCWSTR pwsPath, LPCWSTR pwsQuery)
+DWORD QueryEvents(LPCWSTR pwsPath, LPCWSTR pwsQuery, LPCWSTR pwsDump)
 {
     DWORD status = ERROR_SUCCESS;
     EVT_HANDLE hResults = NULL;
@@ -161,8 +162,8 @@ cleanup:
 void PrintHelp(wchar_t* argv[])
 {
     wprintf(L"\nPrintHelp:\n");
-    wprintf(L"\"%s\" [PathToEventFile] [XPathFormattedQuery]\n", argv[0]);
-    wprintf(L"EXAMPLE: \"%s\" c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624]\n", argv[0]); // c:\Windows\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624]
+    wprintf(L"\"%s\" [PathToEventFile] [XPathFormattedQuery] [PathToDumpFile]\n", argv[0]);
+    wprintf(L"EXAMPLE: \"%s\" c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624] c:\\Users\\%%username%%\\Downloads\n", argv[0]); // c:\Windows\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624] c:\\Users\\%username%\\Downloads
 }
 
 void ShowArguments(int argc, wchar_t* argv[])
@@ -177,6 +178,7 @@ void ShowArguments(int argc, wchar_t* argv[])
 void ShowEnvironment()
 {
     // todo: need to make a collector function, which will allow easier access to environment
+    // todo: interpolate %EnvironmentVariables% inside path arguments used in this executable, for example %SystemRoot%
     // help: [ https://docs.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstrings ] - get the environment in a block
     // help: [ https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable ] - envp is not an official way of retrieving environment variables
     // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ] - best explanation of how it works
@@ -212,12 +214,112 @@ cleanup:
         FreeEnvironmentStringsW(lpvEnv);
 }
 
+void DisplayError(LPCWSTR lpszFunction)
+// Routine Description:
+// Retrieve and output the system error message for the last-error code
+{
+    LPVOID lpMsgBuf;
+    LPVOID lpDisplayBuf;
+    DWORD dw = GetLastError();
+
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR)&lpMsgBuf,
+        0,
+        NULL);
+
+    lpDisplayBuf =
+        (LPVOID)LocalAlloc(LMEM_ZEROINIT,
+            (lstrlen((LPCTSTR)lpMsgBuf)
+                + lstrlen((LPCTSTR)lpszFunction)
+                + 40) // account for format string
+            * sizeof(TCHAR));
+
+    if (FAILED(StringCchPrintf((LPTSTR)lpDisplayBuf,
+        LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+        TEXT("%s failed with error code %d as follows:\n%s"),
+        lpszFunction,
+        dw,
+        lpMsgBuf)))
+    {
+        printf("FATAL ERROR: Unable to output error code.\n");
+    }
+
+    wprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
+
+    LocalFree(lpMsgBuf);
+    LocalFree(lpDisplayBuf);
+}
+
+void WriteFile(LPCWSTR pwsDump)
+{
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/opening-a-file-for-reading-or-writing ]
+    HANDLE hFile;
+    char DataBuffer[] = "This is some test data to write to the file.";
+    DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
+    DWORD dwBytesWritten = 0;
+    BOOL bErrorFlag = FALSE;
+
+    hFile = CreateFile(pwsDump,                // name of the write
+                       GENERIC_WRITE,          // open for writing
+                       0,                      // do not share
+                       NULL,                   // default security
+                       CREATE_NEW,             // create new file only
+                       FILE_ATTRIBUTE_NORMAL,  // normal file
+                       NULL);                  // no attr. template
+
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        DisplayError(L"CreateFile");
+        wprintf(L"Terminal failure: Unable to open file \"%s\" for write.\n", pwsDump);
+        return;
+    }
+
+    wprintf(TEXT("Writing %d bytes to %s.\n"), dwBytesToWrite, pwsDump);
+
+    bErrorFlag = WriteFile(
+        hFile,           // open file handle
+        DataBuffer,      // start of data to write
+        dwBytesToWrite,  // number of bytes to write
+        &dwBytesWritten, // number of bytes that were written
+        NULL);            // no overlapped structure
+
+    if (FALSE == bErrorFlag)
+    {
+        DisplayError(L"WriteFile");
+        wprintf(L"Terminal failure: Unable to write to file.\n");
+    }
+    else
+    {
+        if (dwBytesWritten != dwBytesToWrite)
+        {
+            // This is an error because a synchronous write that results in
+            // success (WriteFile returns TRUE) should write all data as
+            // requested. This would not necessarily be the case for
+            // asynchronous writes.
+            wprintf(L"Error: dwBytesWritten != dwBytesToWrite\n");
+        }
+        else
+        {
+            wprintf(L"Wrote %d bytes to %s successfully.\n", dwBytesWritten, pwsDump);
+        }
+    }
+
+    CloseHandle(hFile);
+}
+
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
     const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
     const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
+    const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
 
-    if (argc <= 1)
+    if (argc <= 3)
     {
         wprintf(L"Insufficient arguments provided!\n");
         ShowArguments(argc, argv);
@@ -225,7 +327,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
         PrintHelp(argv); 
         return ERROR_BAD_ARGUMENTS;
     }
-    else if (argc > 3)
+    else if (argc > 4)
     {
         wprintf(L"Too many arguments provided!\n");
         ShowArguments(argc, argv);
@@ -233,8 +335,8 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
         PrintHelp(argv);
         return ERROR_BAD_ARGUMENTS;
     }
-    
-    return QueryEvents(argv[1], argv[2]);
+
+    return QueryEvents(argv[1], argv[2], argv[3]);
 
     // todo: instead of printing raw XML events to console, need to add a JSON export file and which fields to include, then do more complex processing in Python, or skip this part and do all processing in Python
 }

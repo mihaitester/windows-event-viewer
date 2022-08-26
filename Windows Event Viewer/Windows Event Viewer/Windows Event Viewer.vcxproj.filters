@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Windows Event Viewer.cpp">
+    <ClCompile Include="windows-event-viewer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
