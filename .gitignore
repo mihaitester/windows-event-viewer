@@ -6,5 +6,6 @@
 *.pdb
 *.idb
 *.obj
+*.obj.*
 *.log
 *.tlog
