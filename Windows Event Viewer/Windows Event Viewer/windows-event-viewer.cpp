@@ -219,25 +219,64 @@ cleanup:
 
 LPWSTR InterpolateString(LPCWSTR string)
 {
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ]
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/strsafe/nf-strsafe-stringcchcopyexw ] - overly engineered string functions that consume a lot of time to write with and do not actually bring the NEEDED functionality to strings
+
     LPWSTR buffer = new WCHAR[MAX_PATH_LONG];
     LPWSTR env_var_name = new WCHAR[MAX_PATH]; // note: environment variable names cannot go beyond 260
     LPWSTR env_var_value = new WCHAR[MAX_PATH_LONG]; // note: environment variable value can go all the way to 32767 
 
     LPWSTR result = NULL;
-    DWORD status = ERROR_SUCCESS; // todo: why statuses are called errors, and then there is confusion between program errors and function errors aka statuses
+    DWORD status = ERROR_SUCCESS;
+    DWORD lastError = ERROR_SUCCESS;
 
-    for (int i = 0; i <= wcslen(string); i++)
+    ZeroMemory(buffer, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+
+    for (int i = 0, j = 0; i <= wcslen(string); i++)
     {
-        if ( ERROR_SUCCESS != (status = GetEnvironmentVariableW(env_var_name,env_var_value,MAX_PATH_LONG)))
+        if (L'%' == string[i]) // todo: need to validate that there are an even number of L'%' wchars, or the interpolation fails
         {
-            // todo: continue despite error, need to figure out what to replace invalid interpolation parameter, perhaps a hardcoded string value
+            // note: need to find the next % and get the value in between as [env_var_name]
+            int k = 0;
+            while (string[i + k + 1] != L'%')
+            {
+                env_var_name[k] = string[i + k + 1];
+                k++;
+            }
+            env_var_name[k] = L'\0';
+
+            if (ERROR_SUCCESS != (status = GetEnvironmentVariableW(env_var_name, env_var_value, MAX_PATH_LONG)))
+            {
+                lastError = GetLastError();
+                if (ERROR_ENVVAR_NOT_FOUND == lastError)
+                {
+                    wprintf(L"Environment variable [%s] does not exist.\n", env_var_name);
+                    swprintf(env_var_value, MAX_PATH_LONG, L"_%s_NOT_FOUND_", env_var_name); // note: [comment1] continue despite error, need to figure out what to replace invalid interpolation parameter, perhaps a hardcoded string value
+                }
+            }
+            // else // note: related to [comment1], continue even if variable was not found
+            //{
+            // note: copy the interpolated value into the buffer containing raw path
+            wcscat_s(buffer, MAX_PATH_LONG, env_var_value);
+            j += wcslen(env_var_value);
+            //}
+            i = i + k + 1;
         }
         else
         {
-            // todo: need to copy the interpolated value into the buffer
-
+            buffer[j] = string[i];
+            j++;
         }
     }
+
+    // todo: before returning, use a smaller capped buffer, that is precisely the size of the string
+    result = (LPWSTR) malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
+    wcscpy_s(result, wcslen(buffer) + 1, buffer);
+
+cleanup:
+    free(buffer);
+    free(env_var_name);
+    free(env_var_value);
 
     return result;
 }
@@ -389,6 +428,12 @@ void RunTests()
     timestamp = GetLocalTimestamp();
     wprintf(L"Local timestamp: %s\n", timestamp);
     free(timestamp);
+
+    LPWSTR interpolated = NULL;
+    const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
+    interpolated = InterpolateString(pwsDump);
+    wprintf(L"InterpolateString(%s)=%s\n", pwsDump, interpolated);
+    free(interpolated);
 }
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
