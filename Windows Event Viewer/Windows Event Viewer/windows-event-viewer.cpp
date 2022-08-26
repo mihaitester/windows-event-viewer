@@ -313,11 +313,58 @@ void WriteFile(LPCWSTR pwsDump)
     CloseHandle(hFile);
 }
 
+
+// help: [ https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtime?redirectedfrom=MSDN ]
+// help: [ https://docs.microsoft.com/en-us/cpp/mfc/memory-management-examples?view=msvc-170 ]
+// help: [ https://docs.microsoft.com/en-us/cpp/c-runtime-library/string-manipulation-crt?source=recommendations&view=msvc-170 ]
+
+const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
+const int BUFF_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
+
+LPWSTR GetSystemTimestamp()
+{
+    SYSTEMTIME st;
+
+    // Allocate on the heap
+    LPWSTR timestamp = new WCHAR[BUFF_SIZE];
+
+    GetSystemTime(&st);
+    swprintf(timestamp, BUFF_SIZE, L"%04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    // wprintf(L"The system time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+    return timestamp;
+}
+
+LPWSTR GetLocalTimestamp()
+{
+    SYSTEMTIME lt;
+    const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
+    const int BUFF_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
+
+    // Allocate on the heap
+    LPWSTR timestamp = new WCHAR[BUFF_SIZE];
+
+    GetLocalTime(&lt);
+    swprintf(timestamp, BUFF_SIZE, L"%04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
+    // wprintf(L" The local time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
+
+    return timestamp;
+}
+
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
-    const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
-    const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
-    const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
+    // const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
+    // const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
+    // const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
+    
+    LPWSTR timestamp = NULL;
+    timestamp = GetSystemTimestamp();
+    wprintf(L"System timestamp: %s\n", timestamp);
+    free(timestamp);
+
+    timestamp = GetLocalTimestamp();
+    wprintf(L"Local timestamp: %s\n", timestamp);
+    free(timestamp);
 
     if (argc <= 3)
     {
