@@ -259,6 +259,8 @@ void DisplayError(LPCWSTR lpszFunction)
 void WriteFile(LPCWSTR pwsDump)
 {
     // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/opening-a-file-for-reading-or-writing ]
+    // todo: need to open file handle, then dump items one by one, and finally close the file and ensure its written, 
+    // todo: to be on the safe side, every couple of items need to close the file to have the files available
     HANDLE hFile;
     char DataBuffer[] = "This is some test data to write to the file.";
     DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
