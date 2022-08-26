@@ -9,6 +9,7 @@
 // help: [ https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/basic-audit-logon-events?source=recommendations ]
 // help: [ https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/basic-audit-account-logon-events ]
 // help: [ https://www.manageengine.com/products/active-directory-audit/kb/windows-security-log-event-id-4624.html ] - EventID=4624 for successful login, EventID=4625 for failed login
+// help: [ https://www.w3schools.com/xml/xpath_syntax.asp ] - how to formulate XPath 1.0 query instead of sending the XML query string
 
 #include <windows.h>
 #include <sddl.h>
@@ -118,10 +119,11 @@ int main(void)
 {
     DWORD status = ERROR_SUCCESS;
     EVT_HANDLE hResults = NULL;
-    const LPCWSTR pwsPath = L"Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"; // why cant use [ Microsoft-Windows-Security-Auditing ]
-    const LPCWSTR pwsQuery = L"Event/System[EventID=22]"; // why cant use [ Event/System[EventID=4672] ]
+    const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
+    const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
 
-    hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryChannelPath | EvtQueryReverseDirection);
+    hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryFilePath | EvtQueryReverseDirection);
+    // hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryChannelPath | EvtQueryReverseDirection);
     if (NULL == hResults)
     {
         status = GetLastError();
@@ -132,6 +134,8 @@ int main(void)
             // You can call the EvtGetExtendedStatus function to try to get 
             // additional information as to what is wrong with the query.
             wprintf(L"The query is not valid.\n");
+        else if (ERROR_ACCESS_DENIED == status)
+            wprintf(L"Access denied to run query. Try running as Admin.\n");
         else
             wprintf(L"EvtQuery failed with %lu.\n", status);
 
