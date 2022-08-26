@@ -29,6 +29,8 @@
 #define ARRAY_SIZE 10
 #define TIMEOUT 1000  // 1 second; Set and use in place of INFINITE in EvtNext call
 
+#define MAX_PATH_LONG 32767 + 1 // need to alocate max buffer for paths, then interpolate and use smaller buffer, supposedly can support even longer paths, help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ]
+
 //DWORD PrintResults(EVT_HANDLE hResults);
 //DWORD PrintEvent(EVT_HANDLE hEvent); // Shown in the Rendering Events topic
 
@@ -182,6 +184,7 @@ void ShowEnvironment()
     // help: [ https://docs.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstrings ] - get the environment in a block
     // help: [ https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable ] - envp is not an official way of retrieving environment variables
     // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ] - best explanation of how it works
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ] - may potentially need to expand paths
     
     LPTSTR lpszVariable;
     LPTCH lpvEnv;
@@ -212,6 +215,31 @@ void ShowEnvironment()
 cleanup:
     if (NULL != lpvEnv)
         FreeEnvironmentStringsW(lpvEnv);
+}
+
+LPWSTR InterpolateString(LPCWSTR string)
+{
+    LPWSTR buffer = new WCHAR[MAX_PATH_LONG];
+    LPWSTR env_var_name = new WCHAR[MAX_PATH]; // note: environment variable names cannot go beyond 260
+    LPWSTR env_var_value = new WCHAR[MAX_PATH_LONG]; // note: environment variable value can go all the way to 32767 
+
+    LPWSTR result = NULL;
+    DWORD status = ERROR_SUCCESS; // todo: why statuses are called errors, and then there is confusion between program errors and function errors aka statuses
+
+    for (int i = 0; i <= wcslen(string); i++)
+    {
+        if ( ERROR_SUCCESS != (status = GetEnvironmentVariableW(env_var_name,env_var_value,MAX_PATH_LONG)))
+        {
+            // todo: continue despite error, need to figure out what to replace invalid interpolation parameter, perhaps a hardcoded string value
+        }
+        else
+        {
+            // todo: need to copy the interpolated value into the buffer
+
+        }
+    }
+
+    return result;
 }
 
 void DisplayError(LPCWSTR lpszFunction)
@@ -351,12 +379,8 @@ LPWSTR GetLocalTimestamp()
     return timestamp;
 }
 
-int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
+void RunTests()
 {
-    // const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
-    // const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
-    // const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
-    
     LPWSTR timestamp = NULL;
     timestamp = GetSystemTimestamp();
     wprintf(L"System timestamp: %s\n", timestamp);
@@ -365,6 +389,17 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     timestamp = GetLocalTimestamp();
     wprintf(L"Local timestamp: %s\n", timestamp);
     free(timestamp);
+}
+
+int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
+{
+    // const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
+    // const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
+    // const LPCWSTR pwsDump = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
+    
+#ifdef _DEBUG
+    RunTests();
+#endif // DEBUG
 
     if (argc <= 3)
     {
