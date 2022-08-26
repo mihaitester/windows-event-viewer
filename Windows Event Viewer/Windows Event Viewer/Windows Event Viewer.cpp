@@ -119,12 +119,10 @@ cleanup:
     return status;
 }
 
-int main(void)
+DWORD QueryEvents(LPCWSTR pwsPath, LPCWSTR pwsQuery)
 {
     DWORD status = ERROR_SUCCESS;
     EVT_HANDLE hResults = NULL;
-    const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
-    const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
 
     hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryFilePath | EvtQueryReverseDirection);
     // hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryChannelPath | EvtQueryReverseDirection);
@@ -153,7 +151,18 @@ cleanup:
     if (hResults)
         EvtClose(hResults);
 
-    return 0;
+    return status;
+
+}
+
+int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
+{
+    const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
+    const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
+    
+    return QueryEvents(pwsPath, pwsQuery);
+
+    // todo: instead of printing raw XML events to console, need to add a JSON export file and which fields to include, then do more complex processing in Python, or skip this part and do all processing in Python
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
