@@ -8,6 +8,7 @@
 // help: [ https://docs.microsoft.com/en-us/windows/win32/wes/rendering-events ]
 // help: [ https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/basic-audit-logon-events?source=recommendations ]
 // help: [ https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/basic-audit-account-logon-events ]
+// help: [ https://www.manageengine.com/products/active-directory-audit/kb/windows-security-log-event-id-4624.html ] - EventID=4624 for successful login, EventID=4625 for failed login
 
 #include <windows.h>
 #include <sddl.h>
