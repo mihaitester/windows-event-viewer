@@ -122,7 +122,8 @@ def process_xml_events(xml_events=[]):
 
 def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
                    filter="Event/System[EventID=4624]", # help: [ https://en.wikipedia.org/wiki/Event_Viewer ] - more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter
-                   export_folder=DUMP_EXPORT_FOLDER):
+                   export_folder=DUMP_EXPORT_FOLDER,
+                   suffix=""):
     print(search_for_executable())
     interpolated_export_folder = interpolate_path(DUMP_EXPORT_FOLDER)
 
@@ -158,7 +159,7 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
         events = process_xml_events(content)
 
-    with open(generated_file.replace(DUMP_EXTENSION, '.json'), 'w') as writefile:
+    with open(generated_file.replace(DUMP_EXTENSION, '') + suffix + ".json", 'w') as writefile:
         writefile.write(json.dumps(events, indent=4))
 
     return events
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
     # help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ]
     interestingeventids = {4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
-                           4624: "Successful User Logons", 4625: "Logon Failures", 4634: "Successful User Logoff's",
+                           4624: "An account was successfully logged on", 4625: "Logon Failures", 4634: "An account was logged off",
                            4656: "Object Access", 4658: "(4658 to 4664)",
                            4719: "Audit Policy Changes", 4720: "User Account Changes", 4722: "", 4723: "", 4724: "",
                            4725: "", 4726: "", 4738: "", 4740: "", 4727: "", 4728: "",
@@ -185,5 +186,11 @@ if __name__ == "__main__":
 
     auditchanges = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Policy Changes"][0]
     e_auditchanges = collect_events(filter="Event/System[EventID={}]".format(auditchanges))
+
+    logons = [x for x in interestingeventids.keys() if interestingeventids[x] == "An account was successfully logged on"][0]
+    e_logons = collect_events(filter="Event/System[EventID={}]".format(logons), suffix="-"+"-".join(interestingeventids[logons].split(" ")))
+
+    logouts = [x for x in interestingeventids.keys() if interestingeventids[x] == "An account was logged off"][0]
+    e_logouts = collect_events(filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interestingeventids[logouts].split(" ")))
 
     pass # used for debugging
