@@ -471,7 +471,7 @@ LPWSTR ConstructFilename(LPCWSTR pwsDumpFolder)
     wcscat_s(buffer, MAX_PATH_LONG, (LPWSTR) &module[i+1]); // note: string starting at position i should contain only the filename of executable
     //free(module);
     buffer[wcslen(buffer) - 4] = L'\0'; // note: strip [.exe] from filename 
-    wcscat_s(buffer, MAX_PATH_LONG, L".xml"); // note: top up with xml extension
+    wcscat_s(buffer, MAX_PATH_LONG, L".xml.list"); // note: top up with xml extension
 
     // note: before returning, use a smaller capped buffer, that is precisely the size of the string
     result = (LPWSTR)malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
