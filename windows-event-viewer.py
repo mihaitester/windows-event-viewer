@@ -2,6 +2,7 @@ import os
 import glob
 import subprocess
 from xml.dom.minidom import parseString as xml_parse_string
+import json
 
 CONSOLE_ENCODING = "UTF-8"
 FILE_ENCODING = "UTF-16-le"
@@ -158,10 +159,14 @@ if __name__ == "__main__":
                     eventdata[key] = [x for x in xml_event.getElementsByTagName("Data") if x.getAttribute("Name") == key][0].childNodes[0].nodeValue
                 except:
                     print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+                    eventdata[key] = ""
 
             event = { 'System': system, 'EventData': eventdata }
             events.append(event)
 
-        # todo: need to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
+    with open(generated_file.replace(extension,'.json'), 'w') as writefile:
+        writefile.write(json.dumps(events, indent=4))
+
+    # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
     pass # used for debugging
