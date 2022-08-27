@@ -181,9 +181,9 @@ if __name__ == "__main__":
 
     # todo: append to the logs generated the meaning of the EventID that was filtered
     auditlogscleared = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Logs Cleared"][0]
-    collect_events(filter="Event/System[EventID={}]".format(auditlogscleared))
+    e_auditlogscleared = collect_events(filter="Event/System[EventID={}]".format(auditlogscleared))
 
-    auditchangesid = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Policy Changes"][0]
-    collect_events(filter="Event/System[EventID={}]".format(auditchangesid))
+    auditchanges = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Policy Changes"][0]
+    e_auditchanges = collect_events(filter="Event/System[EventID={}]".format(auditchanges))
 
     pass # used for debugging
