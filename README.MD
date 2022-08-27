@@ -13,6 +13,12 @@ Main difference from working with `Python` is that in `C/C++` developer has to k
 
 For now the executable generates an `.xml` file containing the events from the requested event file and filtered by the `XPathFormattedQuery`. In the example given all events with `EventID=4624` will be dumped to the file. The file dumped will have a filename with the following structure `[PathToDumpFolder]\<Generated_Timestamp>_windows-event-viewer.xml`. The `<Generated_Timestamp>` is based on local time and has the following structure `YYYY-mm-dd_HH-MM-SS.sss`
 
+### Caveats:
+* In order to execute the script and have it not fail, you will need to run the `python windows-event-viewer.py` or `windows-event-viewer.exe` using an `Admin` console, otherwise the script will not be able to open the `Security.evtx` file.
+    * Press `WinKey` + `X`, which opens the command popup, and then press `A` to open a `Windows Powershell` with admin rights. 
+    * Then use, to navigate to current directory and execute the commandline from above, where `PathToScript` is the folder containing `windows-event-viwere.py` 
+      > cd `PathToScript`
+
 # Requirements
 * `Visual Studio Community` - https://visualstudio.microsoft.com/vs/community/ - need to install the `Desktop development with C++` package - needed to import `Windows Event Viewer` solution and to compile and build the `windows-event-viewer.exe` tool which is used by the python script
 * `Python` - https://www.python.org/downloads/windows/ - ideally get the latest version
