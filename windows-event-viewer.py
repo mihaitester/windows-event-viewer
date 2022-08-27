@@ -121,7 +121,7 @@ def process_xml_events(xml_events=[]):
 
 
 def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
-                   filter="Event/System[EventID=4624]",
+                   filter="Event/System[EventID=4624]", # help: [ https://en.wikipedia.org/wiki/Event_Viewer ] - more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter
                    export_folder=DUMP_EXPORT_FOLDER):
     print(search_for_executable())
     interpolated_export_folder = interpolate_path(DUMP_EXPORT_FOLDER)
