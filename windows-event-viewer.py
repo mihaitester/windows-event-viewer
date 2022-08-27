@@ -102,7 +102,22 @@ def process_xml_events(xml_events=[]):
         })
 
         eventdata = {}
-        for key in ['SubjectUserSid', 'SubjectUserName', 'SubjectDomainName', 'SubjectLogonId', 'TargetUserSid',
+
+        # todo: here is the problem, different events have different fieds in the EVENT_DATA structure, so need to figure out a mapping that can describe this
+        # SubjectUserSid
+        # SubjectUserName
+        # SubjectDomainName
+        # SubjectLogonId
+        # TargetName
+        # WindowsLive
+        # Type
+        # CountOfCredentialsReturned
+        # ReadOperation
+        # ReturnCode
+        # ProcessCreationTime
+        # ClientProcessId
+
+    for key in ['SubjectUserSid', 'SubjectUserName', 'SubjectDomainName', 'SubjectLogonId', 'TargetUserSid',
                     'TargetUserName', 'TargetDomainName', 'TargetLogonId', 'LogonType', 'LogonProcessName',
                     'AuthenticationPackageName', 'WorkstationName', 'LogonGuid', 'TransmittedServices', 'LmPackageName',
                     'KeyLength', 'ProcessId', 'ProcessName', 'IpAddress', 'IpPort', 'ImpersonationLevel',
