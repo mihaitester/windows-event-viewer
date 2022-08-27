@@ -1,6 +1,7 @@
 import os
 import glob
 import subprocess
+from xml.dom.minidom import parseString as xml_parse_string
 
 CONSOLE_ENCODING = "UTF-8"
 FILE_ENCODING = "UTF-16-le"
@@ -75,11 +76,7 @@ if __name__ == "__main__":
     if "" == generated_file:
         generated_file = files_after[len(files_after) - 1] # note: added for debug, should remove afterwards
 
-    # import xml.etree.ElementTree as ET
 
-    from xml.dom.minidom import parse, parseString
-
-    BOM = bytes([0xEF,0xBB, 0xBF])
     # todo: process the generated and collect multiple events for processing
     events = []
     # help: [ https://stackoverflow.com/questions/2746426/python-converting-wide-char-strings-from-a-binary-file-to-python-unicode-strin ]
@@ -94,16 +91,76 @@ if __name__ == "__main__":
         # help: [ https://stackoverflow.com/questions/29533624/xml-parsing-error-junk-after-document-element-error-on-body-tag ] - if getting error "junk after ..." it means the xml document finished, dump file contains list of XML dumped objects, separated by NULL_WCHAR, and its not a fully valid XML document
 
         content = content.split(NULL_WCHAR) # note: it happens that `\x00` escapes inside the bytes stream, its due to how `PrintEvent` function in `windows-event-viewer.cpp` renders its output, it works out as we can use it to split content into list of event and parse sepparately
+        content = content[:-1] # note: remove the last item as it is empty
 
         # help: [ https://realpython.com/python-xml-parser/ ] - how to parse `.xml` string and use python objects to process
         # help: [ https://docs.python.org/3/library/xml.dom.minidom.html ]
         # help: [ https://mkyong.com/python/python-read-xml-file-dom-example/ ] - how to parse XML
         for item in content:
-            xml_event = parseString(item)
+            xml_event = xml_parse_string(item)
             # xml_event.getElementsByTagName("EventID")[0].childNodes[0].nodeValue
-            xml_eventid = xml_event.getElementsByTagName("EventID")[0].childNodes
-            eventid = int(getText(xml_eventid))
-            pass
+
+            # help: [ https://pypi.org/project/xmldict/ ] - could have done this faster with this external package
+            # note: this code can easily break as it is, meaning changes in windows events will break this code
+            eventid = int(xml_event.getElementsByTagName("EventID")[0].childNodes[0].nodeValue)
+            version = int(xml_event.getElementsByTagName("Version")[0].childNodes[0].nodeValue)
+            level = int(xml_event.getElementsByTagName("Level")[0].childNodes[0].nodeValue)
+            task = int(xml_event.getElementsByTagName("Task")[0].childNodes[0].nodeValue)
+            opcode = int(xml_event.getElementsByTagName("Opcode")[0].childNodes[0].nodeValue)
+            keywords = xml_event.getElementsByTagName("Keywords")[0].childNodes[0].nodeValue
+            eventrecordid = int(xml_event.getElementsByTagName("EventRecordID")[0].childNodes[0].nodeValue)
+            channel = xml_event.getElementsByTagName("Channel")[0].childNodes[0].nodeValue
+            computer = xml_event.getElementsByTagName("Computer")[0].childNodes[0].nodeValue
+
+            security = ""
+            try:
+                security = xml_event.getElementsByTagName("Security")[0].childNodes[0].nodeValue
+            except:
+                pass
+
+            execution_processid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ProcessID")
+            execution_threadid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ThreadID")
+            correlation_activityid = xml_event.getElementsByTagName("Correlation")[0].getAttribute("ActivityID")
+            timecreated_systemtime = xml_event.getElementsByTagName("TimeCreated")[0].getAttribute("SystemTime")
+            provider_name = xml_event.getElementsByTagName("Provider")[0].getAttribute("Name")
+            provider_guid = xml_event.getElementsByTagName("Provider")[0].getAttribute("Guid")
+
+            system = {
+                'EventID': eventid,
+                'Version': version,
+                'Level': level,
+                'Task': task,
+                'Opcode': opcode,
+                'Keywords': keywords,
+                'EventRecordID': eventrecordid,
+                'Channel': channel,
+                'Computer': computer,
+                'Security': security,
+                'Execution': {
+                    'ProcessID': execution_processid,
+                    'ThreadID': execution_threadid
+                },
+                'Correlation': {
+                    'ActivityID': correlation_activityid
+                },
+                'TimeCreated': {
+                    'SystemTime': timecreated_systemtime
+                },
+                'Provider': {
+                    'Name': provider_name,
+                    'Guid': provider_guid
+                }
+            }
+
+            eventdata = {}
+            for key in [ 'SubjectUserSid', 'SubjectUserName', 'SubjectDomainName', 'SubjectLogonId', 'TargetUserSid', 'TargetUserName', 'TargetDomainName', 'TargetLogonId', 'LogonType', 'LogonProcessName', 'AuthenticationPackageName', 'WorkstationName', 'LogonGuid', 'TransmittedServices', 'LmPackageName', 'KeyLength', 'ProcessId', 'ProcessName', 'IpAddress', 'IpPort', 'ImpersonationLevel', 'RestrictedAdminMode', 'TargetOutboundUserName', 'TargetOutboundDomainName', 'VirtualAccount', 'TargetLinkedLogonId', 'ElevatedToken' ]:
+                try:
+                    eventdata[key] = [x for x in xml_event.getElementsByTagName("Data") if x.getAttribute("Name") == key][0].childNodes[0].nodeValue
+                except:
+                    print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+
+            event = { 'System': system, 'EventData': eventdata }
+            events.append(event)
 
         # todo: need to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
