@@ -10,3 +10,5 @@
 *.log
 *.tlog
 *.evtx
+*.tar
+*.tar.*
