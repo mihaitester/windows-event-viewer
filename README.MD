@@ -1,5 +1,7 @@
+`help: [ https://wordpress.com/support/markdown-quick-reference/ ]`
+
 # Readme
-I was thinking of trying to find security events that could indicate if my computer has been hacked and if there are weird things happening with my PC and one idea is to query the built in windows events and see what is happening with the OS. However using the powershell console or the default GUI viewer does not offer enough flexibility to create special filters which can track such dubious activity. Hence the idea is to use the Windows API and dump reports or actively track events and showcase alerts and notifications when something weird is taking place.
+I was thinking of trying to find security events that could indicate if my computer has been hacked and if there are weird things happening with my PC and one idea is to query the built-in windows events and see what is happening with the OS. However, using the `Windows Powershell` console or the default GUI called `Event viewer` does not offer enough flexibility to create special filters which can track such dubious activity. Hence the idea is to use the `Windows API` and dump reports or actively track events and showcase alerts and notifications when something weird is taking place.
 
 Main difference from working with `Python` is that in `C/C++` developer has to keep track of variables and do memory management, and it takes a lot more volume of code to achieve same results, like for example working with timestamps and formatting of files. Also exception management and error recovery are way harder to do in `C/C++`. But once the code works and is debugged, it will run way faster and hopefully I can get some `timeit` wrapper done for `C/C++` to compare results.
 
@@ -20,3 +22,6 @@ For now the executable generates an `.xml` file containing the events from the r
 
 # Similar projects
 * https://pypi.org/project/python-evtx/ - should be able to extract events for processing directly in python - if the implementation relies on a lot of kernel calls than it is potentially slower than dumping `.xml` log and then processing text with python, will test this in the future
+
+# Considerations
+* `WARNING` - since I do not control the servers of the attached links, especially `# help: [ link ]` or `// help: [ link ]` those can be used by the server owners or `Internet Service Providers` to trackback developers, through logging of `IPAddress`, `OperatingSystem`, `Web Browser`
