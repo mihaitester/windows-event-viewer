@@ -165,6 +165,9 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
 if __name__ == "__main__":
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
+
+    # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
+    # help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ]
     interestingeventids = {4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
                            4624: "Successful User Logons", 4625: "Logon Failures", 4634: "Successful User Logoff's",
                            4656: "Object Access", 4658: "(4658 to 4664)",

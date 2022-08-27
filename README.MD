@@ -11,6 +11,12 @@ Main difference from working with `Python` is that in `C/C++` developer has to k
 
 For now the executable generates an `.xml` file containing the events from the requested event file and filtered by the `XPathFormattedQuery`. In the example given all events with `EventID=4624` will be dumped to the file. The file dumped will have a filename with the following structure `[PathToDumpFolder]\<Generated_Timestamp>_windows-event-viewer.xml`. The `<Generated_Timestamp>` is based on local time and has the following structure `YYYY-mm-dd_HH-MM-SS.sss`
 
+# Requirements
+* `Visual Studio Community` - https://visualstudio.microsoft.com/vs/community/ - need to install the `Desktop development with C++` package - needed to import `Windows Event Viewer` solution and to compile and build the `windows-event-viewer.exe` tool which is used by the python script
+* `Python` - https://www.python.org/downloads/windows/ - ideally get the latest version
+
+# Optionals
+* `Pycharm` - https://www.jetbrains.com/pycharm/download/#section=windows - can help a lot with debugging python script
 
 # Similar projects
-* https://pypi.org/project/python-evtx/ - should be able to extract events for processing directly in python
+* https://pypi.org/project/python-evtx/ - should be able to extract events for processing directly in python - if the implementation relies on a lot of kernel calls than it is potentially slower than dumping `.xml` log and then processing text with python, will test this in the future
