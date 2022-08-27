@@ -1,4 +1,4 @@
-// Windows Event Viewer.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// windows-event-viewer.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 // help: [ https://docs.microsoft.com/en-us/windows/win32/wes/querying-for-events ]
@@ -31,9 +31,9 @@
 
 #define MAX_PATH_LONG 32767 + 1 // need to alocate max buffer for paths, then interpolate and use smaller buffer, supposedly can support even longer paths, help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ]
 
-//DWORD PrintResults(EVT_HANDLE hResults);
-//DWORD PrintEvent(EVT_HANDLE hEvent); // Shown in the Rendering Events topic
 
+
+// ************************************ EVENTS ************************************
 void DisplayError(LPCWSTR lpszFunction)
 // Routine Description:
 // Retrieve and output the system error message for the last-error code
@@ -76,6 +76,64 @@ void DisplayError(LPCWSTR lpszFunction)
     LocalFree(lpDisplayBuf);
 }
 
+//void WriteFile(LPCWSTR pwsDump)
+//{
+//    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/opening-a-file-for-reading-or-writing ]
+//    // todo: need to open file handle, then dump items one by one, and finally close the file and ensure its written, 
+//    // todo: to be on the safe side, every couple of items need to close the file to have the files available
+//    HANDLE hFile;
+//    char DataBuffer[] = "This is some test data to write to the file.";
+//    DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
+//    DWORD dwBytesWritten = 0;
+//    BOOL bErrorFlag = FALSE;
+//
+//    hFile = CreateFile(pwsDump,                // name of the write
+//                       GENERIC_WRITE,          // open for writing
+//                       0,                      // do not share
+//                       NULL,                   // default security
+//                       CREATE_NEW,             // create new file only
+//                       FILE_ATTRIBUTE_NORMAL,  // normal file
+//                       NULL);                  // no attr. template
+//
+//    if (hFile == INVALID_HANDLE_VALUE)
+//    {
+//        DisplayError(L"CreateFile");
+//        wprintf(L"Terminal failure: Unable to open file \"%s\" for write.\n", pwsDump);
+//        return;
+//    }
+//
+//    wprintf(TEXT("Writing %d bytes to %s.\n"), dwBytesToWrite, pwsDump);
+//
+//    bErrorFlag = WriteFile(
+//        hFile,           // open file handle
+//        DataBuffer,      // start of data to write
+//        dwBytesToWrite,  // number of bytes to write
+//        &dwBytesWritten, // number of bytes that were written
+//        NULL);            // no overlapped structure
+//
+//    if (FALSE == bErrorFlag)
+//    {
+//        DisplayError(L"WriteFile");
+//        wprintf(L"Terminal failure: Unable to write to file.\n");
+//    }
+//    else
+//    {
+//        if (dwBytesWritten != dwBytesToWrite)
+//        {
+//            // This is an error because a synchronous write that results in
+//            // success (WriteFile returns TRUE) should write all data as
+//            // requested. This would not necessarily be the case for
+//            // asynchronous writes.
+//            wprintf(L"Error: dwBytesWritten != dwBytesToWrite\n");
+//        }
+//        else
+//        {
+//            wprintf(L"Wrote %d bytes to %s successfully.\n", dwBytesWritten, pwsDump);
+//        }
+//    }
+//
+//    CloseHandle(hFile);
+//}
 
 DWORD PrintEvent(EVT_HANDLE hEvent, HANDLE hFile)
 {
@@ -236,7 +294,7 @@ DWORD QueryEvents(LPCWSTR pwsPath, LPCWSTR pwsQuery, LPCWSTR pwsDumpFile)
     EVT_HANDLE hResults = NULL;
 
     hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryFilePath | EvtQueryReverseDirection);
-    // hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryChannelPath | EvtQueryReverseDirection);
+    // hResults = EvtQuery(NULL, pwsPath, pwsQuery, EvtQueryChannelPath | EvtQueryReverseDirection); // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
     if (NULL == hResults)
     {
         status = GetLastError();
@@ -265,64 +323,50 @@ cleanup:
     return status;
 
 }
+// **************************************** ****************************************
 
-void PrintHelp(wchar_t* argv[])
+
+
+// *********************************** TIMESTAMPS **********************************
+// help: [ https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtime?redirectedfrom=MSDN ]
+// help: [ https://docs.microsoft.com/en-us/cpp/mfc/memory-management-examples?view=msvc-170 ]
+// help: [ https://docs.microsoft.com/en-us/cpp/c-runtime-library/string-manipulation-crt?source=recommendations&view=msvc-170 ]
+
+const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
+const int TIMESTAMP_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
+
+LPWSTR GetSystemTimestamp()
 {
-    wprintf(L"\nPrintHelp:\n");
-    wprintf(L"\"%s\" [PathToEventFile] [XPathFormattedQuery] [PathToDumpFile]\n", argv[0]);
-    wprintf(L"EXAMPLE: \"%s\" c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624] c:\\Users\\%%username%%\\Downloads\n", argv[0]); // c:\Windows\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624] c:\Users\%username%\Downloads
-    wprintf(L"EXAMPLE: \"%s\" %%SystemRoot%%\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624] c:\\Users\\%%username%%\\Downloads\n", argv[0]); // %SystemRoot%\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624] c:\Users\%username%\Downloads
+    SYSTEMTIME st;
+
+    // Allocate on the heap
+    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
+
+    GetSystemTime(&st);
+    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    // wprintf(L"The system time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+    return timestamp;
 }
 
-void ShowArguments(int argc, wchar_t* argv[])
+LPWSTR GetLocalTimestamp()
 {
-    wprintf(L"\nShowArguments:\n");
-    for (int i = 0; i < argc; i++)
-    {
-        wprintf(L"%d - \"%s\"\n", i, argv[i]);
-    }
+    SYSTEMTIME lt;
+
+    // Allocate on the heap
+    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
+
+    GetLocalTime(&lt);
+    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
+    // wprintf(L" The local time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
+
+    return timestamp;
 }
+// **************************************** ****************************************
 
-void ShowEnvironment()
-{
-    // todo: need to make a collector function, which will allow easier access to environment
-    // todo: interpolate %EnvironmentVariables% inside path arguments used in this executable, for example %SystemRoot%
-    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstrings ] - get the environment in a block
-    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable ] - envp is not an official way of retrieving environment variables
-    // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ] - best explanation of how it works
-    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ] - may potentially need to expand paths
-    
-    LPTSTR lpszVariable;
-    LPTCH lpvEnv;
 
-    wprintf(L"\nShowEnvironment:\n");
 
-    // Get a pointer to the environment block.
-    lpvEnv = GetEnvironmentStringsW();
-
-    // If the returned pointer is NULL, exit.
-    if (lpvEnv == NULL)
-    {
-        wprintf(L"GetEnvironmentStringsW failed (%d)\n", GetLastError());
-        goto cleanup; 
-    }
-
-    // Variable strings are separated by NULL byte, and the block is 
-    // terminated by a NULL byte. 
-
-    lpszVariable = (LPTSTR)lpvEnv;
-
-    while (*lpszVariable)
-    {
-        wprintf(TEXT("%s\n"), lpszVariable);
-        lpszVariable += lstrlen(lpszVariable) + 1;
-    }
-
-cleanup:
-    if (NULL != lpvEnv)
-        FreeEnvironmentStringsW(lpvEnv);
-}
-
+// *********************************INTERPOLATIONS *********************************
 LPWSTR InterpolateString(LPCWSTR string)
 {
     // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ]
@@ -376,7 +420,7 @@ LPWSTR InterpolateString(LPCWSTR string)
     }
 
     // note: before returning, use a smaller capped buffer, that is precisely the size of the string
-    result = (LPWSTR) malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
+    result = (LPWSTR)malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
     wcscpy_s(result, wcslen(buffer) + 1, buffer);
 
 cleanup:
@@ -385,102 +429,6 @@ cleanup:
     free(env_var_value);
 
     return result;
-}
-
-
-//void WriteFile(LPCWSTR pwsDump)
-//{
-//    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/opening-a-file-for-reading-or-writing ]
-//    // todo: need to open file handle, then dump items one by one, and finally close the file and ensure its written, 
-//    // todo: to be on the safe side, every couple of items need to close the file to have the files available
-//    HANDLE hFile;
-//    char DataBuffer[] = "This is some test data to write to the file.";
-//    DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
-//    DWORD dwBytesWritten = 0;
-//    BOOL bErrorFlag = FALSE;
-//
-//    hFile = CreateFile(pwsDump,                // name of the write
-//                       GENERIC_WRITE,          // open for writing
-//                       0,                      // do not share
-//                       NULL,                   // default security
-//                       CREATE_NEW,             // create new file only
-//                       FILE_ATTRIBUTE_NORMAL,  // normal file
-//                       NULL);                  // no attr. template
-//
-//    if (hFile == INVALID_HANDLE_VALUE)
-//    {
-//        DisplayError(L"CreateFile");
-//        wprintf(L"Terminal failure: Unable to open file \"%s\" for write.\n", pwsDump);
-//        return;
-//    }
-//
-//    wprintf(TEXT("Writing %d bytes to %s.\n"), dwBytesToWrite, pwsDump);
-//
-//    bErrorFlag = WriteFile(
-//        hFile,           // open file handle
-//        DataBuffer,      // start of data to write
-//        dwBytesToWrite,  // number of bytes to write
-//        &dwBytesWritten, // number of bytes that were written
-//        NULL);            // no overlapped structure
-//
-//    if (FALSE == bErrorFlag)
-//    {
-//        DisplayError(L"WriteFile");
-//        wprintf(L"Terminal failure: Unable to write to file.\n");
-//    }
-//    else
-//    {
-//        if (dwBytesWritten != dwBytesToWrite)
-//        {
-//            // This is an error because a synchronous write that results in
-//            // success (WriteFile returns TRUE) should write all data as
-//            // requested. This would not necessarily be the case for
-//            // asynchronous writes.
-//            wprintf(L"Error: dwBytesWritten != dwBytesToWrite\n");
-//        }
-//        else
-//        {
-//            wprintf(L"Wrote %d bytes to %s successfully.\n", dwBytesWritten, pwsDump);
-//        }
-//    }
-//
-//    CloseHandle(hFile);
-//}
-
-
-// help: [ https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtime?redirectedfrom=MSDN ]
-// help: [ https://docs.microsoft.com/en-us/cpp/mfc/memory-management-examples?view=msvc-170 ]
-// help: [ https://docs.microsoft.com/en-us/cpp/c-runtime-library/string-manipulation-crt?source=recommendations&view=msvc-170 ]
-
-const LPCWSTR TIMESTAMP_FORMAT = L"%04d-%02d-%02d_%02d-%02d-%02d.%03d";
-const int TIMESTAMP_SIZE = 24; // 4-2-2_2-2-2.3 = 17 + separators = 17 + 6 = 23 + end
-
-LPWSTR GetSystemTimestamp()
-{
-    SYSTEMTIME st;
-
-    // Allocate on the heap
-    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
-
-    GetSystemTime(&st);
-    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-    // wprintf(L"The system time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-    return timestamp;
-}
-
-LPWSTR GetLocalTimestamp()
-{
-    SYSTEMTIME lt;
-
-    // Allocate on the heap
-    LPWSTR timestamp = new WCHAR[TIMESTAMP_SIZE];
-
-    GetLocalTime(&lt);
-    swprintf(timestamp, TIMESTAMP_SIZE, TIMESTAMP_FORMAT, lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
-    // wprintf(L" The local time is: %04d-%02d-%02d_%02d-%02d-%02d.%03d\n", lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
-
-    return timestamp;
 }
 
 LPWSTR ConstructFilename(LPCWSTR pwsDumpFolder)
@@ -537,40 +485,109 @@ cleanup:
 
     return result;
 }
+// **************************************** ****************************************
 
+
+
+// ************************************* TESTS *************************************
 void RunTests()
 {
+    // Test 1 - GetSystemTimestamp
     LPWSTR timestamp = NULL;
     timestamp = GetSystemTimestamp();
     wprintf(L"System timestamp: %s\n", timestamp);
     free(timestamp);
 
+    // Test 2 - GetLocalTimestamp
     timestamp = GetLocalTimestamp();
     wprintf(L"Local timestamp: %s\n", timestamp);
     free(timestamp);
 
     const LPCWSTR pwsDumpFolder = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
 
+    // Test 3 - InterpolateString
     LPWSTR interpolated = NULL;
     interpolated = InterpolateString(pwsDumpFolder);
     wprintf(L"InterpolateString(%s)=%s\n", pwsDumpFolder, interpolated);
     free(interpolated);
 
+    // Test 4 - ConstructFilename
     LPWSTR pwsDumpFile = NULL;
     pwsDumpFile = ConstructFilename(pwsDumpFolder);
     wprintf(L"ConstructFilename(%s)=%s\n", pwsDumpFolder, pwsDumpFile);
     free(pwsDumpFile);
 }
+// **************************************** ****************************************
+
+
+
+// ************************************ CONSOLE ************************************
+void PrintHelp(wchar_t* argv[])
+{
+    wprintf(L"\nPrintHelp:\n");
+    wprintf(L"\"%s\" [PathToEventFile] [XPathFormattedQuery] [PathToDumpFile]\n", argv[0]);
+    wprintf(L"EXAMPLE: \"%s\" c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624] c:\\Users\\%%username%%\\Downloads\n", argv[0]); // c:\Windows\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624] c:\Users\%username%\Downloads
+    wprintf(L"EXAMPLE: \"%s\" %%SystemRoot%%\\System32\\Winevt\\Logs\\Security.evtx Event/System[EventID=4624] c:\\Users\\%%username%%\\Downloads\n", argv[0]); // %SystemRoot%\System32\Winevt\Logs\Security.evtx Event/System[EventID=4624] c:\Users\%username%\Downloads
+}
+
+void ShowArguments(int argc, wchar_t* argv[])
+{
+    wprintf(L"\nShowArguments:\n");
+    for (int i = 0; i < argc; i++)
+    {
+        wprintf(L"%d - \"%s\"\n", i, argv[i]);
+    }
+}
+
+void ShowEnvironment()
+{
+    // todo: need to make a collector function, which will allow easier access to environment
+    // todo: interpolate %EnvironmentVariables% inside path arguments used in this executable, for example %SystemRoot%
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstrings ] - get the environment in a block
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable ] - envp is not an official way of retrieving environment variables
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables ] - best explanation of how it works
+    // help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ] - may potentially need to expand paths
+
+    LPTSTR lpszVariable;
+    LPTCH lpvEnv;
+
+    wprintf(L"\nShowEnvironment:\n");
+
+    // Get a pointer to the environment block.
+    lpvEnv = GetEnvironmentStringsW();
+
+    // If the returned pointer is NULL, exit.
+    if (lpvEnv == NULL)
+    {
+        wprintf(L"GetEnvironmentStringsW failed (%d)\n", GetLastError());
+        goto cleanup;
+    }
+
+    // Variable strings are separated by NULL byte, and the block is 
+    // terminated by a NULL byte. 
+
+    lpszVariable = (LPTSTR)lpvEnv;
+
+    while (*lpszVariable)
+    {
+        wprintf(TEXT("%s\n"), lpszVariable);
+        lpszVariable += lstrlen(lpszVariable) + 1;
+    }
+
+cleanup:
+    if (NULL != lpvEnv)
+        FreeEnvironmentStringsW(lpvEnv);
+}
+// **************************************** ****************************************
+
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
-    // const LPCWSTR pwsPath = L"c:\\Windows\\System32\\Winevt\\Logs\\Security.evtx"; // why cant use [ Microsoft-Windows-Security-Auditing ] // %SystemRoot%\System32\Winevt\Logs\Security.evtx
-    // const LPCWSTR pwsQuery = L"Event/System[EventID=4624]"; // why cant use [ Event/System[EventID=4672] ]
-    DWORD status = ERROR_SUCCESS;
-    
 #ifdef _DEBUG
-    RunTests();
+    RunTests(); // start by running some tests, only in debug mode
 #endif // _DEBUG
+
+    DWORD status = ERROR_SUCCESS;    
 
     if (argc <= 3)
     {
@@ -591,7 +608,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
     LPWSTR pwsLogFile = NULL;
     pwsLogFile = InterpolateString(argv[1]);
-    //wprintf(L"InterpolateString(%s)=%s\n", argv[1], pwsLogFile);
+    //wprintf(L"InterpolateString(%s)=%s\n", argv[1], pwsLogFile); // todo: add a logging system with different levels depending on parameter or _debug define
     //free(pwsLogFile);
 
     LPWSTR pwsDumpFile = NULL;
