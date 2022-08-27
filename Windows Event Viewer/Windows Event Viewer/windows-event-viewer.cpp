@@ -584,10 +584,11 @@ cleanup:
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
 #ifdef _DEBUG
+    ShowArguments(argc, argv);
     RunTests(); // start by running some tests, only in debug mode
 #endif // _DEBUG
 
-    DWORD status = ERROR_SUCCESS;    
+    DWORD status = ERROR_SUCCESS;
 
     if (argc <= 3)
     {
@@ -608,12 +609,12 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
     LPWSTR pwsLogFile = NULL;
     pwsLogFile = InterpolateString(argv[1]);
-    //wprintf(L"InterpolateString(%s)=%s\n", argv[1], pwsLogFile); // todo: add a logging system with different levels depending on parameter or _debug define
+    wprintf(L"InterpolateString(%s)=%s\n", argv[1], pwsLogFile); // todo: add a logging system with different levels depending on parameter or _debug define
     //free(pwsLogFile);
 
     LPWSTR pwsDumpFile = NULL;
     pwsDumpFile = ConstructFilename(argv[3]);
-    //wprintf(L"ConstructFilename(%s)=%s\n", argv[3], pwsDumpFile);
+    wprintf(L"ConstructFilename(%s)=%s\n", argv[3], pwsDumpFile);
     //free(pwsDumpFile);
 
     // todo: instead of printing raw XML events to console, need to add a JSON export file and which fields to include, then do more complex processing in Python, or skip this part and do all processing in Python
@@ -623,7 +624,7 @@ cleanup:
     free(pwsDumpFile);
     free(pwsLogFile);
 
-    return status;    
+    return status;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
