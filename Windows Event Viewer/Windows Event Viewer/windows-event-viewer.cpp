@@ -31,7 +31,7 @@
 
 #define MAX_PATH_LONG 32767 + 1 // need to alocate max buffer for paths, then interpolate and use smaller buffer, supposedly can support even longer paths, help: [ https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry ]
 
-
+#define DUMP_EXTENSION L".xml.list"
 
 // ************************************ EVENTS ************************************
 void DisplayError(LPCWSTR lpszFunction)
@@ -471,7 +471,7 @@ LPWSTR ConstructFilename(LPCWSTR pwsDumpFolder)
     wcscat_s(buffer, MAX_PATH_LONG, (LPWSTR) &module[i+1]); // note: string starting at position i should contain only the filename of executable
     //free(module);
     buffer[wcslen(buffer) - 4] = L'\0'; // note: strip [.exe] from filename 
-    wcscat_s(buffer, MAX_PATH_LONG, L".xml.list"); // note: top up with xml extension
+    wcscat_s(buffer, MAX_PATH_LONG, DUMP_EXTENSION); // note: top up with xml extension
 
     // note: before returning, use a smaller capped buffer, that is precisely the size of the string
     result = (LPWSTR)malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
@@ -488,34 +488,109 @@ cleanup:
 // **************************************** ****************************************
 
 
-
 // ************************************* TESTS *************************************
-void RunTests()
+int FAILED_TESTS = 0;
+int EXECUTED_TESTS = 0;
+
+void Test1()
 {
     // Test 1 - GetSystemTimestamp
     LPWSTR timestamp = NULL;
-    timestamp = GetSystemTimestamp();
-    wprintf(L"System timestamp: %s\n", timestamp);
-    free(timestamp);
 
+    try {
+        timestamp = GetSystemTimestamp();
+        wprintf(L"System timestamp: %s\n", timestamp);
+        if(wcslen(timestamp) != 23)
+            throw "GetSystemTimestamp test failed";
+    }
+    catch (...) {
+        FAILED_TESTS++;
+    }
+cleanup:
+    free(timestamp);
+    EXECUTED_TESTS++;
+}
+
+void Test2()
+{
     // Test 2 - GetLocalTimestamp
-    timestamp = GetLocalTimestamp();
-    wprintf(L"Local timestamp: %s\n", timestamp);
+    LPWSTR timestamp = NULL;
+
+    try {
+        timestamp = GetLocalTimestamp();
+        wprintf(L"Local timestamp: %s\n", timestamp);
+        if (wcslen(timestamp) != 23) 
+            throw "GetLocalTimestamp test failed";
+    }
+    catch (...) {
+        FAILED_TESTS++;
+    }
+cleanup:
     free(timestamp);
+    EXECUTED_TESTS++;
+}
 
-    const LPCWSTR pwsDumpFolder = L"c:\\Users\\%username%\\Downloads"; // will have to interpolate value %username% before using the path
-
+void Test3()
+{
     // Test 3 - InterpolateString
+    const LPCWSTR pwsDumpFolder = L"c:\\Users\\%username%\\Downloads";
     LPWSTR interpolated = NULL;
-    interpolated = InterpolateString(pwsDumpFolder);
-    wprintf(L"InterpolateString(%s)=%s\n", pwsDumpFolder, interpolated);
-    free(interpolated);
+    LPWSTR username = NULL;
 
+    try {
+        username = InterpolateString(L"%username%");
+        interpolated = InterpolateString(pwsDumpFolder);
+        wprintf(L"InterpolateString(%s)=%s\n", pwsDumpFolder, interpolated);
+        if(wcslen(interpolated) != wcslen(L"c:\\Users\\") + wcslen(username) + wcslen(L"\\Downloads"))
+            throw "InterpolateString test failed";
+    }
+    catch (...) {
+        FAILED_TESTS++;
+    }
+cleanup:
+    free(interpolated);
+    free(username);
+    EXECUTED_TESTS++;
+}
+
+void Test4()
+{
     // Test 4 - ConstructFilename
+    const LPCWSTR pwsDumpFolder = L"c:\\Users\\%username%\\Downloads";
     LPWSTR pwsDumpFile = NULL;
-    pwsDumpFile = ConstructFilename(pwsDumpFolder);
-    wprintf(L"ConstructFilename(%s)=%s\n", pwsDumpFolder, pwsDumpFile);
+    LPWSTR username = NULL;
+
+    try {
+        username = InterpolateString(L"%username%");
+        pwsDumpFile = ConstructFilename(pwsDumpFolder);
+        wprintf(L"ConstructFilename(%s)=%s\n", pwsDumpFolder, pwsDumpFile);
+        if (wcslen(pwsDumpFile) != wcslen(L"c:\\Users\\") + wcslen(username) + wcslen(L"\\Downloads") + wcslen(L"\\") + 23 + wcslen(L"_windows-event-viewer") + wcslen(DUMP_EXTENSION))
+            throw "ConstructFilename test failed";
+    }
+    catch (...) {
+        FAILED_TESTS++;
+    }
+cleanup:
     free(pwsDumpFile);
+    EXECUTED_TESTS++;
+}
+
+void RunTests()
+{
+    // todo: figure out how to do some proper tests with asserts and count fails, and how to form dynamic tests considering the paths depend on username or timestamp
+    // help: [ https://docs.microsoft.com/en-us/dotnet/visual-basic/language-reference/statements/try-catch-finally-statement ] - this is not valid for `.cpp` for some reason
+    // help: [ https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?source=recommendations&view=msvc-170 ]
+    int TOTAL_TESTS = 4; 
+    
+    Test1();
+    Test2();
+    Test3();
+    Test4();
+
+    if (FAILED_TESTS > 0)
+        wprintf(L"\n>>> Failed [%d] out of [%d] executed tests from [%d] total number of tests!\n\n", FAILED_TESTS, EXECUTED_TESTS, TOTAL_TESTS);
+    else
+        wprintf(L"\n>>> Successfully ran [%d] out of [%d] total number of tests!\n\n", EXECUTED_TESTS, TOTAL_TESTS);
 }
 // **************************************** ****************************************
 
