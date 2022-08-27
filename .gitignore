@@ -1,4 +1,5 @@
 .vs
+.idea
 *.exe
 *.exe.*
 *.ipb

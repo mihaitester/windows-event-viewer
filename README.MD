@@ -4,7 +4,7 @@ I was thinking of trying to find security events that could indicate if my compu
 Main difference from working with `Python` is that in `C/C++` developer has to keep track of variables and do memory management, and it takes a lot more volume of code to achieve same results, like for example working with timestamps and formatting of files. Also exception management and error recovery are way harder to do in `C/C++`. But once the code works and is debugged, it will run way faster and hopefully I can get some `timeit` wrapper done for `C/C++` to compare results.
 
 # Usage
-> `windows-event-viewer.exe [PathToEventFile] [XPathFormattedQuery] [PathToDumpFolder]`
+> windows-event-viewer.exe `PathToEventFile` `XPathFormattedQuery` `PathToDumpFolder`
 * `PathToEventFile` - `c:\Windows\System32\Winevt\Logs\Security.evtx` or `%SystemRoot%\System32\Winevt\Logs\Security.evtx`
 * `XPathFormattedQuery` - `Event/System[EventID=4624]`
 * `PathToDumpFile` - `c:\Users\%username%\Downloads`
@@ -13,4 +13,4 @@ For now the executable generates an `.xml` file containing the events from the r
 
 
 # Similar projects
-* https://pypi.org/project/python-evtx/ - 
+* https://pypi.org/project/python-evtx/ - should be able to extract events for processing directly in python
