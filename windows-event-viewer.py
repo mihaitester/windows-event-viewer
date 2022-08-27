@@ -39,7 +39,7 @@ def interpolate_path(path="", env=os.environ):
 def query_events(executable=search_for_executable(),
                  event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
                  filter="Event/System[EventID=4624]",
-                 export_folder=r"%HomeDrive%\Users\%Username%\downloads"):
+                 export_folder=DUMP_EXPORT_FOLDER):
     """
     use the `windows-event-viewer.exe` to extract events from the windows log files
     :param event_file:
@@ -58,7 +58,7 @@ def process_xml_events(xml_events=[]):
     # help: [ https://realpython.com/python-xml-parser/ ] - how to parse `.xml` string and use python objects to process
     # help: [ https://docs.python.org/3/library/xml.dom.minidom.html ]
     # help: [ https://mkyong.com/python/python-read-xml-file-dom-example/ ] - how to parse XML
-    for item in content:
+    for item in xml_events:
         xml_event = xml_parse_string(item)
         # xml_event.getElementsByTagName("EventID")[0].childNodes[0].nodeValue
 
@@ -119,31 +119,26 @@ def process_xml_events(xml_events=[]):
 
     return events
 
-def getText(nodelist):
-    rc = []
-    for node in nodelist:
-        if node.nodeType == node.TEXT_NODE:
-            rc.append(node.nodeValue)
-    return ''.join(rc)
 
-
-if __name__ == "__main__":
+def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
+                   filter="Event/System[EventID=4624]",
+                   export_folder=DUMP_EXPORT_FOLDER):
     print(search_for_executable())
-
     interpolated_export_folder = interpolate_path(DUMP_EXPORT_FOLDER)
 
     # todo: capture files present before and after invocation, that way we can get the exact file that was generated
     files_before = glob.glob(os.path.join(interpolated_export_folder, "*" + DUMP_EXTENSION))
-    query_events(export_folder = DUMP_EXPORT_FOLDER)
+    query_events(event_file=event_file, filter=filter, export_folder=export_folder)
     files_after = glob.glob(os.path.join(interpolated_export_folder, "*" + DUMP_EXTENSION))
 
     generated_file = ""
     try:
-        generated_file = [ x for x in files_after if x not in files_before ][0]
+        generated_file = [x for x in files_after if x not in files_before][0]
         print("Captured generated file [{}]".format(generated_file))
     except:
         print("Failed to generate [{}] export of requested events".format(DUMP_EXTENSION))
-        generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
+        return []
+        # generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
 
     # todo: process multiple generated files and collect different classes of events for processing
     events = []
@@ -158,14 +153,34 @@ if __name__ == "__main__":
         problem = content[line * column - padding: line * column + padding]
         # help: [ https://stackoverflow.com/questions/29533624/xml-parsing-error-junk-after-document-element-error-on-body-tag ] - if getting error "junk after ..." it means the xml document finished, dump file contains list of XML dumped objects, separated by NULL_WCHAR, and its not a fully valid XML document
 
-        content = content.split(NULL_WCHAR) # note: it happens that `\x00` escapes inside the bytes stream, its due to how `PrintEvent` function in `windows-event-viewer.cpp` renders its output, it works out as we can use it to split content into list of event and parse sepparately
-        content = content[:-1] # note: remove the last item as it is empty
+        content = content.split(NULL_WCHAR)  # note: it happens that `\x00` escapes inside the bytes stream, its due to how `PrintEvent` function in `windows-event-viewer.cpp` renders its output, it works out as we can use it to split content into list of event and parse sepparately
+        content = content[:-1]  # note: remove the last item as it is empty
 
         events = process_xml_events(content)
 
-    with open(generated_file.replace(DUMP_EXTENSION,'.json'), 'w') as writefile:
+    with open(generated_file.replace(DUMP_EXTENSION, '.json'), 'w') as writefile:
         writefile.write(json.dumps(events, indent=4))
 
+    return events
+
+if __name__ == "__main__":
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
+    interestingeventids = {4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
+                           4624: "Successful User Logons", 4625: "Logon Failures", 4634: "Successful User Logoff's",
+                           4656: "Object Access", 4658: "(4658 to 4664)",
+                           4719: "Audit Policy Changes", 4720: "User Account Changes", 4722: "", 4723: "", 4724: "",
+                           4725: "", 4726: "", 4738: "", 4740: "", 4727: "", 4728: "",
+                           4729: "", 4730: "", 4731: "", 4732: "", 4733: "", 4734: "", 4735: "", 4736: "", 4737: "",
+                           4739: "4739 to 4762", 4768: "Successful User Account Validation",
+                           4776: "Successful User Account Validation", 4771: "Failed User Account Validation",
+                           4777: "Failed User Account Validation", 4778: "Host Session Status",
+                           4779: "Host Session Status"}
+
+    # todo: append to the logs generated the meaning of the EventID that was filtered
+    auditlogscleared = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Logs Cleared"][0]
+    collect_events(filter="Event/System[EventID={}]".format(auditlogscleared))
+
+    auditchangesid = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Policy Changes"][0]
+    collect_events(filter="Event/System[EventID={}]".format(auditchangesid))
 
     pass # used for debugging
