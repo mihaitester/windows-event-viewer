@@ -39,7 +39,8 @@ def interpolate_path(path="", env=os.environ):
 def query_events(executable=search_for_executable(),
                  event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
                  filter="Event/System[EventID=4624]",
-                 export_folder=DUMP_EXPORT_FOLDER):
+                 export_folder=DUMP_EXPORT_FOLDER,
+                 suffix=""):
     """
     use the `windows-event-viewer.exe` to extract events from the windows log files
     :param event_file:
@@ -47,7 +48,7 @@ def query_events(executable=search_for_executable(),
     :param export_folder:
     :return:
     """
-    args = [executable, event_file, filter, export_folder]
+    args = [executable, event_file, filter, export_folder, suffix]
     proc = subprocess.run(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # todo: print these only in debug mode
     # print(proc.stdout.decode(CONSOLE_ENCODING))
@@ -160,7 +161,7 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
     # todo: capture files present before and after invocation, that way we can get the exact file that was generated
     files_before = glob.glob(os.path.join(interpolated_export_folder, "*" + DUMP_EXTENSION))
-    query_events(event_file=event_file, filter=filter, export_folder=export_folder)
+    query_events(event_file=event_file, filter=filter, export_folder=export_folder, suffix=suffix)
     files_after = glob.glob(os.path.join(interpolated_export_folder, "*" + DUMP_EXTENSION))
 
     generated_file = ""
@@ -191,7 +192,7 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
         events = process_xml_events(content)
 
     if len(events):
-        with open(generated_file.replace(DUMP_EXTENSION, '') + suffix + ".json", 'w') as writefile:
+        with open(generated_file.replace(DUMP_EXTENSION, '') + ".json", 'w') as writefile:
             writefile.write(json.dumps(events, indent=4))
     else:
         print("Failed to find events for filter [{}]".format(filter))
