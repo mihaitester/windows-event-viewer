@@ -49,8 +49,9 @@ def query_events(executable=search_for_executable(),
     """
     args = [executable, event_file, filter, export_folder]
     proc = subprocess.run(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print(proc.stdout.decode(CONSOLE_ENCODING))
-    print(proc.stderr.decode(CONSOLE_ENCODING))
+    # todo: print these only in debug mode
+    # print(proc.stdout.decode(CONSOLE_ENCODING))
+    # print(proc.stderr.decode(CONSOLE_ENCODING))
 
 
 def process_xml_events(xml_events=[]):
@@ -165,7 +166,7 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
         generated_file = [x for x in files_after if x not in files_before][0]
         print("Captured generated file [{}]".format(generated_file))
     except:
-        print("Failed to generate [{}] export of requested events".format(DUMP_EXTENSION))
+        print("Failed to generate [{}] export of requested events [{}]".format(DUMP_EXTENSION, filter))
         generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
         return []
 
@@ -264,7 +265,23 @@ if __name__ == "__main__":
     # collect multiple events in a single list, but it will generate different files
     # todo: need to be able to skip printing of files before processing is finished
     kerberos = [x for x in interesting_event_ids.keys() if "Kerberos" in interesting_event_ids[x]]
+    print("Processing kerberos events: [{}]".format(kerberos))
     e_kerberos = []
     [ e_kerberos.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in kerberos ]
+
+    firewall = [x for x in interesting_event_ids.keys() if "Firewall" in interesting_event_ids[x]]
+    print("Processing firewall events: [{}]".format(firewall))
+    e_firewall = []
+    [ e_firewall.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in firewall ]
+
+    ipsec = [x for x in interesting_event_ids.keys() if "IPsec" in interesting_event_ids[x]]
+    print("Processing ipsec events: [{}]".format(ipsec))
+    e_ipsec = []
+    [ e_ipsec.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in ipsec ]
+
+    crypto = [x for x in interesting_event_ids.keys() if "crypto" in interesting_event_ids[x]]
+    print("Processing ipsec events: [{}]".format(crypto))
+    e_crypto = []
+    [e_crypto.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
     pass # used for debugging
