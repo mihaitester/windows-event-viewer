@@ -7,6 +7,8 @@ import argparse
 import logging
 import time
 
+import xmltodict
+
 # todo: add a config file and use those values from there instead of hardcoding here
 CONSOLE_ENCODING = "UTF-8"
 FILE_ENCODING = "UTF-16-le"
@@ -72,6 +74,7 @@ def interpolate_path(path="", env=os.environ):
     return interpolated_path
 
 
+@timeit
 def query_events(executable=search_for_executable(),
                  event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
                  filter="Event/System[EventID=4624]",
@@ -86,12 +89,20 @@ def query_events(executable=search_for_executable(),
     """
     args = [executable, event_file, filter, export_folder, suffix]
     proc = subprocess.run(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # todo: print these only in debug mode
-    # print(proc.stdout.decode(CONSOLE_ENCODING))
-    # print(proc.stderr.decode(CONSOLE_ENCODING))
+    LOGGER.debug("STDOUT: " + proc.stdout.decode(CONSOLE_ENCODING))
+    LOGGER.debug("STDERR: " + proc.stderr.decode(CONSOLE_ENCODING))
 
 
+@timeit
 def process_xml_events(xml_events=[]):
+    events = []
+    for item in xml_events:
+        event = xmltodict.parse(item)
+        events.append(event)
+    return events
+
+
+def process_xml_events_old(xml_events=[]):
     events = []
     # help: [ https://realpython.com/python-xml-parser/ ] - how to parse `.xml` string and use python objects to process
     # help: [ https://docs.python.org/3/library/xml.dom.minidom.html ]
@@ -240,48 +251,22 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
     return events
 
-def menu():
-    parser = argparse.ArgumentParser(description='Given `.evtx` files from Windows this script will analyze logs and showcase warnings and security issues that it finds based on some prepared rules.')
 
-    parser.add_argument('-d', '--debug', choices=['critical', 'error', 'warning', 'info', 'debug', 'notset'],
-                        default='info', required=False,
-                        help='parameter indicating the level of logs to be shown on screen')
-    parser.add_argument('-e', '--event_file', required=False,
-                        help='parameter indicating a singular event file to be analyzed')
-    # parser.add_argument('-c', '--clean', action="store_true", required=False,
-    #                     help='parameter indicating that all files `.xml.list` and `.json` will be deleted before running script')
-
-    arguments = parser.parse_args()
-
-    # todo: implement logger mechanism and log properly information
-    # patch logging level to objects
-    debug_levels = {'critical': logging.CRITICAL, 'error': logging.ERROR, 'warning': logging.WARNING,
-                    'info': logging.INFO, 'debug': logging.DEBUG, 'notset': logging.NOTSET}
-    arguments.debug = debug_levels[arguments.debug]
-
-    return arguments
-
-if __name__ == "__main__":
-    args = menu()
-
-    LOGGER.setLevel(args.debug)
-    handler = logging.StreamHandler()
-    handler.setFormatter(LOG_FORMATTER)
-    LOGGER.addHandler(handler)
-
-    # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
-
+@timeit
+def load_interesting_event_ids(file="interesting_event_ids.json"):
     # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
     # help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ]
     # todo: its not enough to have the meaning of the event_ids, need to have some config file describing which events are targetted, and generate a log based on that meta-descriptor
     # todo: conduct analysis of events and generate an audit report based on hashmap assigning criticality of events to event_ids
     interesting_event_ids = []
-    with open("interesting_event_ids.json", "r") as readfile:
+    with open(file, "r") as readfile:
         interesting_event_ids = json.loads(readfile.read())
         LOGGER.info("Loaded [{}] event IDs from file".format(len(interesting_event_ids)))
+    return interesting_event_ids
 
-    event_file = args.event_file
 
+@timeit
+def process_audit(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx", interesting_event_ids=load_interesting_event_ids()):
     # interestingeventids = {1100: "The event logging service has shut down",
     #                        1101: "Audit events have been dropped by the transport.",
     #                        1102: "The audit log was cleared",
@@ -367,5 +352,42 @@ if __name__ == "__main__":
         for y in e:
             if content in y:
                 e_all.append(y)
+
+
+def menu():
+    parser = argparse.ArgumentParser(description='Given `.evtx` files from Windows this script will analyze logs and showcase warnings and security issues that it finds based on some prepared rules.')
+
+    parser.add_argument('-d', '--debug', choices=['critical', 'error', 'warning', 'info', 'debug', 'notset'],
+                        default='info', required=False,
+                        help='parameter indicating the level of logs to be shown on screen')
+    parser.add_argument('-e', '--event_file', required=False,
+                        help='parameter indicating a singular event file to be analyzed')
+    # parser.add_argument('-c', '--clean', action="store_true", required=False,
+    #                     help='parameter indicating that all files `.xml.list` and `.json` will be deleted before running script')
+
+    arguments = parser.parse_args()
+
+    # patch logging level to objects
+    debug_name = arguments.debug
+    debug_levels = {'critical': logging.CRITICAL, 'error': logging.ERROR, 'warning': logging.WARNING,
+                    'info': logging.INFO, 'debug': logging.DEBUG, 'notset': logging.NOTSET}
+    arguments.debug = debug_levels[arguments.debug]
+    print("Using logging level [{}:{}]".format(debug_name, arguments.debug))
+
+    return arguments
+
+if __name__ == "__main__":
+    args = menu()
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(LOG_FORMATTER)
+    handler.setLevel(args.debug)
+    LOGGER.addHandler(handler)
+
+    LOGGER.setLevel(args.debug)
+
+    # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
+
+    process_audit(args.event_file)
 
     pass # used for debugging
