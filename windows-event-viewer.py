@@ -14,8 +14,12 @@ import xmltodict
 CONSOLE_ENCODING = "UTF-8"
 FILE_ENCODING = "UTF-16-le"
 NULL_WCHAR = '\x00'
-DUMP_EXTENSION = ".xml.list"
+
+
+DEFAULT_EVENT_FILE = r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
+DEFAULT_FILTER = "Event/System[EventID=4624]"
 DUMP_EXPORT_FOLDER = r"%HomeDrive%\Users\%Username%\downloads"
+DUMP_EXTENSION = ".xml.list"
 
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
@@ -77,8 +81,8 @@ def interpolate_path(path="", env=os.environ):
 
 @timeit
 def query_events(executable=search_for_executable(),
-                 event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
-                 filter="Event/System[EventID=4624]",
+                 event_file=DEFAULT_EVENT_FILE,
+                 filter=DEFAULT_FILTER,
                  export_folder=DUMP_EXPORT_FOLDER,
                  suffix=""):
     """
@@ -103,105 +107,106 @@ def process_xml_events(xml_events=[]):
     return events
 
 
-def process_xml_events_old(xml_events=[]):
-    events = []
-    # help: [ https://realpython.com/python-xml-parser/ ] - how to parse `.xml` string and use python objects to process
-    # help: [ https://docs.python.org/3/library/xml.dom.minidom.html ]
-    # help: [ https://mkyong.com/python/python-read-xml-file-dom-example/ ] - how to parse XML
-    for item in xml_events:
-        xml_event = xml_parse_string(item)
-        # xml_event.getElementsByTagName("EventID")[0].childNodes[0].nodeValue
+# todo: remove this dead code after implementing todos mentioned inside
+# def process_xml_events_old(xml_events=[]):
+#     events = []
+#     # help: [ https://realpython.com/python-xml-parser/ ] - how to parse `.xml` string and use python objects to process
+#     # help: [ https://docs.python.org/3/library/xml.dom.minidom.html ]
+#     # help: [ https://mkyong.com/python/python-read-xml-file-dom-example/ ] - how to parse XML
+#     for item in xml_events:
+#         xml_event = xml_parse_string(item)
+#         # xml_event.getElementsByTagName("EventID")[0].childNodes[0].nodeValue
+#
+#         # help: [ https://pypi.org/project/xmldict/ ] - could have done this faster with this external package
+#         # note: this code can easily break as it is, meaning changes in windows events will break this code
+#         system = {}
+#         intkeys = [ 'EventID', 'Version', 'Level', 'Task', 'Opcode', 'EventRecordID' ]
+#         for key in intkeys:
+#             system[key] = int(xml_event.getElementsByTagName(key)[0].childNodes[0].nodeValue)
+#
+#         stringkeys = [ 'Keywords', 'Channel', 'Computer', 'Security' ]
+#         for key in stringkeys:
+#             try:
+#                 system[key] = xml_event.getElementsByTagName("Keywords")[0].childNodes[0].nodeValue
+#             except:
+#                 # todo: print only in debug mode
+#                 # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+#                 system[key] = ""
+#
+#         execution_processid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ProcessID")
+#         execution_threadid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ThreadID")
+#         correlation_activityid = xml_event.getElementsByTagName("Correlation")[0].getAttribute("ActivityID")
+#         timecreated_systemtime = xml_event.getElementsByTagName("TimeCreated")[0].getAttribute("SystemTime")
+#         provider_name = xml_event.getElementsByTagName("Provider")[0].getAttribute("Name")
+#         provider_guid = xml_event.getElementsByTagName("Provider")[0].getAttribute("Guid")
+#
+#         system.update({
+#             'Execution': {
+#                 'ProcessID': execution_processid,
+#                 'ThreadID': execution_threadid
+#             },
+#             'Correlation': {
+#                 'ActivityID': correlation_activityid
+#             },
+#             'TimeCreated': {
+#                 'SystemTime': timecreated_systemtime
+#             },
+#             'Provider': {
+#                 'Name': provider_name,
+#                 'Guid': provider_guid
+#             }
+#         })
+#
+#         eventdata = {}
+#
+#         # todo: here is the problem, different events have different fieds in the EVENT_DATA structure, so need to figure out a mapping that can describe this
+#         # SubjectUserSid
+#         # SubjectUserName
+#         # SubjectDomainName
+#         # SubjectLogonId
+#         # TargetName
+#         # WindowsLive
+#         # Type
+#         # CountOfCredentialsReturned
+#         # ReadOperation
+#         # ReturnCode
+#         # ProcessCreationTime
+#         # ClientProcessId
+#
+#         for key in ['SubjectUserSid', 'SubjectUserName', 'SubjectDomainName', 'SubjectLogonId', 'TargetUserSid',
+#                     'TargetUserName', 'TargetDomainName', 'TargetLogonId', 'LogonType', 'LogonProcessName',
+#                     'AuthenticationPackageName', 'WorkstationName', 'LogonGuid', 'TransmittedServices', 'LmPackageName',
+#                     'KeyLength', 'ProcessId', 'ProcessName', 'IpAddress', 'IpPort', 'ImpersonationLevel',
+#                     'RestrictedAdminMode', 'TargetOutboundUserName', 'TargetOutboundDomainName', 'VirtualAccount',
+#                     'TargetLinkedLogonId', 'ElevatedToken']:
+#             try:
+#                 eventdata[key] = [x for x in xml_event.getElementsByTagName("Data") if x.getAttribute("Name") == key][0].childNodes[0].nodeValue
+#             except:
+#                 # todo: print only in debug mode
+#                 # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+#                 eventdata[key] = ""
+#
+#         # todo: another big one, basically the meaning of some of the values in the logs, numbers are hard to understand by humans - need to create mappings of what values mean - this cannot be skipped with `xmltodict`
+#         # LogonType:
+#         # 2 - Interactive(logon at keyboard and screen of system)
+#         # 3 - Network(i.e.connection to shared folder on this computer from elsewhere on network)
+#         # 4 - Batch(i.e.scheduled task)
+#         # 5 - Service(Service startup)
+#         # 6 - ???
+#         # 7 - Unlock(i.e.unnattended workstation with password protected screen saver)
+#         # 8 - NetworkCleartext(Logon with credentials sent in the clear text.Most often indicates a logon to IIS with "basic authentication") See this article for more information.
+#         # 9 - NewCredentials such as with RunAs or mapping a network drive with alternate credentials.This logon type does not seem to show up in any events.If you want to track users attempting to logon with alternate credentials see 4648.  MS says "A caller cloned its current token and specified new credentials for outbound connections. The new logon session has the same local identity, but uses different credentials for other network connections."
+#         # 10 - RemoteInteractive(Terminal Services, Remote Desktop or Remote Assistance)
+#         # 11 - CachedInteractive(logon with cached domain credentials such as when logging on to a laptop when away from the network)
+#
+#         event = {'System': system, 'EventData': eventdata}
+#         events.append(event)
+#
+#     return events
 
-        # help: [ https://pypi.org/project/xmldict/ ] - could have done this faster with this external package
-        # note: this code can easily break as it is, meaning changes in windows events will break this code
-        system = {}
-        intkeys = [ 'EventID', 'Version', 'Level', 'Task', 'Opcode', 'EventRecordID' ]
-        for key in intkeys:
-            system[key] = int(xml_event.getElementsByTagName(key)[0].childNodes[0].nodeValue)
 
-        stringkeys = [ 'Keywords', 'Channel', 'Computer', 'Security' ]
-        for key in stringkeys:
-            try:
-                system[key] = xml_event.getElementsByTagName("Keywords")[0].childNodes[0].nodeValue
-            except:
-                # todo: print only in debug mode
-                # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
-                system[key] = ""
-
-        execution_processid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ProcessID")
-        execution_threadid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ThreadID")
-        correlation_activityid = xml_event.getElementsByTagName("Correlation")[0].getAttribute("ActivityID")
-        timecreated_systemtime = xml_event.getElementsByTagName("TimeCreated")[0].getAttribute("SystemTime")
-        provider_name = xml_event.getElementsByTagName("Provider")[0].getAttribute("Name")
-        provider_guid = xml_event.getElementsByTagName("Provider")[0].getAttribute("Guid")
-
-        system.update({
-            'Execution': {
-                'ProcessID': execution_processid,
-                'ThreadID': execution_threadid
-            },
-            'Correlation': {
-                'ActivityID': correlation_activityid
-            },
-            'TimeCreated': {
-                'SystemTime': timecreated_systemtime
-            },
-            'Provider': {
-                'Name': provider_name,
-                'Guid': provider_guid
-            }
-        })
-
-        eventdata = {}
-
-        # todo: here is the problem, different events have different fieds in the EVENT_DATA structure, so need to figure out a mapping that can describe this
-        # SubjectUserSid
-        # SubjectUserName
-        # SubjectDomainName
-        # SubjectLogonId
-        # TargetName
-        # WindowsLive
-        # Type
-        # CountOfCredentialsReturned
-        # ReadOperation
-        # ReturnCode
-        # ProcessCreationTime
-        # ClientProcessId
-
-        for key in ['SubjectUserSid', 'SubjectUserName', 'SubjectDomainName', 'SubjectLogonId', 'TargetUserSid',
-                    'TargetUserName', 'TargetDomainName', 'TargetLogonId', 'LogonType', 'LogonProcessName',
-                    'AuthenticationPackageName', 'WorkstationName', 'LogonGuid', 'TransmittedServices', 'LmPackageName',
-                    'KeyLength', 'ProcessId', 'ProcessName', 'IpAddress', 'IpPort', 'ImpersonationLevel',
-                    'RestrictedAdminMode', 'TargetOutboundUserName', 'TargetOutboundDomainName', 'VirtualAccount',
-                    'TargetLinkedLogonId', 'ElevatedToken']:
-            try:
-                eventdata[key] = [x for x in xml_event.getElementsByTagName("Data") if x.getAttribute("Name") == key][0].childNodes[0].nodeValue
-            except:
-                # todo: print only in debug mode
-                # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
-                eventdata[key] = ""
-
-        # todo: another big one, basically the meaning of some of the values in the logs, numbers are hard to understand by humans - need to create mappings of what values mean - this cannot be skipped with `xmltodict`
-        # LogonType:
-        # 2 - Interactive(logon at keyboard and screen of system)
-        # 3 - Network(i.e.connection to shared folder on this computer from elsewhere on network)
-        # 4 - Batch(i.e.scheduled task)
-        # 5 - Service(Service startup)
-        # 6 - ???
-        # 7 - Unlock(i.e.unnattended workstation with password protected screen saver)
-        # 8 - NetworkCleartext(Logon with credentials sent in the clear text.Most often indicates a logon to IIS with "basic authentication") See this article for more information.
-        # 9 - NewCredentials such as with RunAs or mapping a network drive with alternate credentials.This logon type does not seem to show up in any events.If you want to track users attempting to logon with alternate credentials see 4648.  MS says "A caller cloned its current token and specified new credentials for outbound connections. The new logon session has the same local identity, but uses different credentials for other network connections."
-        # 10 - RemoteInteractive(Terminal Services, Remote Desktop or Remote Assistance)
-        # 11 - CachedInteractive(logon with cached domain credentials such as when logging on to a laptop when away from the network)
-
-        event = {'System': system, 'EventData': eventdata}
-        events.append(event)
-
-    return events
-
-
-def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
-                   filter="Event/System[EventID=4624]", # help: [ https://en.wikipedia.org/wiki/Event_Viewer ] - more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter
+def collect_events(event_file=DEFAULT_EVENT_FILE,
+                   filter=DEFAULT_FILTER, # help: [ https://en.wikipedia.org/wiki/Event_Viewer ] - more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter
                    export_folder=DUMP_EXPORT_FOLDER,
                    suffix=""):
     print(search_for_executable())
@@ -267,46 +272,9 @@ def load_interesting_event_ids(file="interesting_event_ids.json"):
 
 
 @timeit
-def process_audit(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx", interesting_event_ids=load_interesting_event_ids()):
-    # interestingeventids = {1100: "The event logging service has shut down",
-    #                        1101: "Audit events have been dropped by the transport.",
-    #                        1102: "The audit log was cleared",
-    #                        1104: "The security Log is now full",
-    #                        1108: "The event logging service encountered an error",
-    #                        4611: "A trusted logon process has been registered with the Local Security Authority",
-    #                        4612: "Internal resources allocated for the queuing of audit messages have been exhausted, leading to the loss of some audits.",
-    #                        4616: "The system time was changed.",
-    #                        4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
-    #                        4624: "An account was successfully logged on", 4625: "Logon Failures",
-    #                        4626: "User / Device claims information",
-    #                        4627: "Group membership information.",
-    #                        4634: "An account was logged off",
-    #                        4646: "IKE DoS - prevention mode started",
-    #                        4647: "User initiated logoff",
-    #                        4648: "A logon was attempted using explicit credentials",
-    #                        4649: "A replay attack was detected", # todo: how does windows actually identify replay attacks and does it actually do something or leaves user vulnerable to exploits
-    #                        4650: "An IPsec Main Mode security association was established",
-    #                        4651: "An IPsec Main Mode security association was established",
-    #                        4652: "An IPsec Main Mode negotiation failed",
-    #                        4653: "An IPsec Main Mode negotiation failed",
-    #                        4654: "An IPsec Quick Mode negotiation failed",
-    #                        4655: "An IPsec Main Mode security association ended",
-    #                        4656: "A handle to an object was requested",
-    #                        4656: "Object Access",
-    #                        4656: "A handle to an object was requested", # objects are usually files, hence FILE_OPEN -> over 90% of the time
-    #                        4657: "A registry value was modified",
-    #                        4658: "The handle to an object was closed", # objects are usually files, hence FILE_CLOSE -> over 90% of the time
-    #                        4659: "A handle to an object was requested with intent to delete",
-    #                        4660: "An object was deleted", # objects are usually files, hence FILE_DELETE
-    #                        4661: "A handle to an object was requested",
-    #                        4658: "(4658 to 4664)",
-    #                        4719: "Audit Policy Changes", 4720: "User Account Changes", 4722: "", 4723: "", 4724: "",
-    #                        4725: "", 4726: "", 4738: "", 4740: "", 4727: "", 4728: "",
-    #                        4729: "", 4730: "", 4731: "", 4732: "", 4733: "", 4734: "", 4735: "", 4736: "", 4737: "",
-    #                        4739: "4739 to 4762", 4768: "Successful User Account Validation",
-    #                        4776: "Successful User Account Validation", 4771: "Failed User Account Validation",
-    #                        4777: "Failed User Account Validation", 4778: "Host Session Status",
-    #                        4779: "Host Session Status"}
+def process_audit(event_file=DEFAULT_EVENT_FILE, interesting_event_ids=load_interesting_event_ids()):
+
+    # 4649: "A replay attack was detected", # todo: how does windows actually identify replay attacks and does it actually do something or leaves user vulnerable to exploits
 
     # todo: append to the logs generated the meaning of the EventID that was filtered
     # todo: have a better way of collecting events and figuring out if penetration did take place -> for example chained events that describe malware actions
