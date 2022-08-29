@@ -284,4 +284,14 @@ if __name__ == "__main__":
     e_crypto = []
     [e_crypto.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
+    all = [ x for x in interesting_event_ids.keys() ]
+    content = "Advapi"
+    print("Processing all events for specific content: [{}]".format(content))
+    e_all = []
+    for x in all:
+        e = collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
+        for y in e:
+            if content in y:
+                e_all.append(y)
+
     pass # used for debugging
