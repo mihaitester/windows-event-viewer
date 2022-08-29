@@ -197,30 +197,65 @@ if __name__ == "__main__":
 
     # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
     # help: [ https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/ ]
-    interestingeventids = {4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
-                           4624: "An account was successfully logged on", 4625: "Logon Failures", 4634: "An account was logged off",
-                           4656: "Object Access", 4658: "(4658 to 4664)",
-                           4719: "Audit Policy Changes", 4720: "User Account Changes", 4722: "", 4723: "", 4724: "",
-                           4725: "", 4726: "", 4738: "", 4740: "", 4727: "", 4728: "",
-                           4729: "", 4730: "", 4731: "", 4732: "", 4733: "", 4734: "", 4735: "", 4736: "", 4737: "",
-                           4739: "4739 to 4762", 4768: "Successful User Account Validation",
-                           4776: "Successful User Account Validation", 4771: "Failed User Account Validation",
-                           4777: "Failed User Account Validation", 4778: "Host Session Status",
-                           4779: "Host Session Status"}
+    # todo: its not enough to have the meaning of the event_ids, need to have some config file describing which events are targetted, and generate a log based on that meta-descriptor
+    # todo: conduct analysis of events and generate an audit report based on hashmap assigning criticality of events to event_ids
+    interesting_event_ids = []
+    with open("interesting_event_ids.json", "r") as readfile:
+        interesting_event_ids = json.loads(readfile.read())
 
 
+    # interestingeventids = {1100: "The event logging service has shut down",
+    #                        1101: "Audit events have been dropped by the transport.",
+    #                        1102: "The audit log was cleared",
+    #                        1104: "The security Log is now full",
+    #                        1108: "The event logging service encountered an error",
+    #                        4611: "A trusted logon process has been registered with the Local Security Authority",
+    #                        4612: "Internal resources allocated for the queuing of audit messages have been exhausted, leading to the loss of some audits.",
+    #                        4616: "The system time was changed.",
+    #                        4608: "4608 to 4612 System Events", 4612: "Audit Logs Cleared",
+    #                        4624: "An account was successfully logged on", 4625: "Logon Failures",
+    #                        4626: "User / Device claims information",
+    #                        4627: "Group membership information.",
+    #                        4634: "An account was logged off",
+    #                        4646: "IKE DoS - prevention mode started",
+    #                        4647: "User initiated logoff",
+    #                        4648: "A logon was attempted using explicit credentials",
+    #                        4649: "A replay attack was detected", # todo: how does windows actually identify replay attacks and does it actually do something or leaves user vulnerable to exploits
+    #                        4650: "An IPsec Main Mode security association was established",
+    #                        4651: "An IPsec Main Mode security association was established",
+    #                        4652: "An IPsec Main Mode negotiation failed",
+    #                        4653: "An IPsec Main Mode negotiation failed",
+    #                        4654: "An IPsec Quick Mode negotiation failed",
+    #                        4655: "An IPsec Main Mode security association ended",
+    #                        4656: "A handle to an object was requested",
+    #                        4656: "Object Access",
+    #                        4656: "A handle to an object was requested", # objects are usually files, hence FILE_OPEN -> over 90% of the time
+    #                        4657: "A registry value was modified",
+    #                        4658: "The handle to an object was closed", # objects are usually files, hence FILE_CLOSE -> over 90% of the time
+    #                        4659: "A handle to an object was requested with intent to delete",
+    #                        4660: "An object was deleted", # objects are usually files, hence FILE_DELETE
+    #                        4661: "A handle to an object was requested",
+    #                        4658: "(4658 to 4664)",
+    #                        4719: "Audit Policy Changes", 4720: "User Account Changes", 4722: "", 4723: "", 4724: "",
+    #                        4725: "", 4726: "", 4738: "", 4740: "", 4727: "", 4728: "",
+    #                        4729: "", 4730: "", 4731: "", 4732: "", 4733: "", 4734: "", 4735: "", 4736: "", 4737: "",
+    #                        4739: "4739 to 4762", 4768: "Successful User Account Validation",
+    #                        4776: "Successful User Account Validation", 4771: "Failed User Account Validation",
+    #                        4777: "Failed User Account Validation", 4778: "Host Session Status",
+    #                        4779: "Host Session Status"}
 
     # todo: append to the logs generated the meaning of the EventID that was filtered
-    auditlogscleared = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Logs Cleared"][0]
+    # todo: have a better way of collecting events and figuring out if penetration did take place -> for example chained events that describe malware actions
+    auditlogscleared = [x for x in interesting_event_ids.keys() if "The audit log was cleared" in interesting_event_ids[x]][0]
     e_auditlogscleared = collect_events(filter="Event/System[EventID={}]".format(auditlogscleared))
 
-    auditchanges = [x for x in interestingeventids.keys() if interestingeventids[x] == "Audit Policy Changes"][0]
+    auditchanges = [x for x in interesting_event_ids.keys() if "System audit policy was changed" in interesting_event_ids[x]][0]
     e_auditchanges = collect_events(filter="Event/System[EventID={}]".format(auditchanges))
 
-    logons = [x for x in interestingeventids.keys() if interestingeventids[x] == "An account was successfully logged on"][0]
-    e_logons = collect_events(filter="Event/System[EventID={}]".format(logons), suffix="-"+"-".join(interestingeventids[logons].split(" ")))
+    logons = [x for x in interesting_event_ids.keys() if "An account was successfully logged on" in interesting_event_ids[x]][0]
+    e_logons = collect_events(filter="Event/System[EventID={}]".format(logons), suffix="-"+"-".join(interesting_event_ids[logons].split(" ")))
 
-    logouts = [x for x in interestingeventids.keys() if interestingeventids[x] == "An account was logged off"][0]
-    e_logouts = collect_events(filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interestingeventids[logouts].split(" ")))
+    logouts = [x for x in interesting_event_ids.keys() if "An account was logged off" in interesting_event_ids[x]][0]
+    e_logouts = collect_events(filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interesting_event_ids[logouts].split(" ")))
 
     pass # used for debugging
