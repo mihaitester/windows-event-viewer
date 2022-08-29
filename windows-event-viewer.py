@@ -344,6 +344,8 @@ def process_audit(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
     e_crypto = []
     [ e_crypto.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
+
+    # todo: make a method of some sort, which filters all events containing some string, between some dates
     all = [ x for x in interesting_event_ids.keys() ]
     content = "Advapi"
     LOGGER.info("Processing all events for specific content: [{}]".format(content))
@@ -351,8 +353,25 @@ def process_audit(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx",
     for x in all:
         e = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
         for y in e:
-            if content in y:
+            if content in str(y):
                 e_all.append(y)
+
+    DATE_FORMAT = "%Y-%m-%d"
+    start_date = datetime.datetime.strptime("2022-08-26", DATE_FORMAT)
+    end_date = datetime.datetime.strptime("2022-08-30", DATE_FORMAT)
+    e_dated = []
+    for event in e_all:
+        # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
+        # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
+        # data_string = "2022-08-24T10:08:18.371409200Z"
+        # st = datetime.datetime.fromisoformat(data_string[:-4])
+        # format_regex = "%Y-%m-%dT%H:%M:%S.%f"
+        # t = time.strptime(data_string[:-4], format_regex)
+        e_datetime = datetime.datetime.fromisoformat(event["Event"]["System"]["TimeCreated"]["@SystemTime"][:-4])
+        if e_datetime >= start_date and e_datetime <= end_date:
+            e_dated.append(event)
+    with open(os.path.join(interpolate_path(DUMP_EXPORT_FOLDER), datetime.datetime.now().strftime(DATETIME_FORMAT) + "-events-between-{}-and-{}.json".format(start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT))), "w") as writefile:
+        writefile.write(json.dumps(e_dated, indent=4))
 
 
 def menu():
@@ -379,13 +398,6 @@ def menu():
 
 if __name__ == "__main__":
     args = menu()
-
-    # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
-    # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
-    data_string = "2022-08-26T10:08:18.371409200Z"
-    st = datetime.datetime.fromisoformat(data_string[:-4])
-    # format_regex = "%Y-%m-%dT%H:%M:%S.%f"
-    # t = time.strptime(data_string[:-4], format_regex)
 
     handler = logging.StreamHandler()
     handler.setFormatter(LOG_FORMATTER)
