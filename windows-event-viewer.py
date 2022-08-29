@@ -159,6 +159,11 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
     print(search_for_executable())
     interpolated_export_folder = interpolate_path(DUMP_EXPORT_FOLDER)
 
+    # strip illegal path characters from suffix
+    # help: [ https://stackoverflow.com/questions/1976007/what-characters-are-forbidden-in-windows-and-linux-directory-names ]
+    for ch_ill in '%<>:"/\\|?*':
+        suffix = suffix.replace(ch_ill, "_")
+
     # todo: capture files present before and after invocation, that way we can get the exact file that was generated
     files_before = glob.glob(os.path.join(interpolated_export_folder, "*" + DUMP_EXTENSION))
     query_events(event_file=event_file, filter=filter, export_folder=export_folder, suffix=suffix)
