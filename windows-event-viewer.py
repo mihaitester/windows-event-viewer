@@ -388,6 +388,7 @@ if __name__ == "__main__":
 
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
+    # todo: need to parse timestamps and filter out events only between 2 dates: "2022-08-26T10:08:18.371409200Z"
     process_audit(args.event_file)
 
     pass # used for debugging
