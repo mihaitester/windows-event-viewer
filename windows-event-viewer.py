@@ -187,8 +187,11 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
         events = process_xml_events(content)
 
-    with open(generated_file.replace(DUMP_EXTENSION, '') + suffix + ".json", 'w') as writefile:
-        writefile.write(json.dumps(events, indent=4))
+    if len(events):
+        with open(generated_file.replace(DUMP_EXTENSION, '') + suffix + ".json", 'w') as writefile:
+            writefile.write(json.dumps(events, indent=4))
+    else:
+        print("Failed to find events for filter [{}]".format(filter))
 
     return events
 
