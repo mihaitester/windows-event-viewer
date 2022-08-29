@@ -3,6 +3,8 @@ import glob
 import subprocess
 from xml.dom.minidom import parseString as xml_parse_string
 import json
+import argparse
+import logging
 
 # todo: add a config file and use those values from there instead of hardcoding here
 CONSOLE_ENCODING = "UTF-8"
@@ -204,7 +206,30 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
 
     return events
 
+def menu():
+    parser = argparse.ArgumentParser(description='Given `.evtx` files from Windows this script will analyze logs and showcase warnings and security issues that it finds based on some prepared rules.')
+
+    parser.add_argument('-d', '--debug', choices=['critical', 'error', 'warning', 'info', 'debug', 'notset'],
+                        default='info', required=False,
+                        help='parameter indicating the level of logs to be shown on screen')
+    parser.add_argument('-e', '--event_file', required=False,
+                        help='parameter indicating a singular event file to be analyzed')
+    # parser.add_argument('-c', '--clean', action="store_true", required=False,
+    #                     help='parameter indicating that all files `.xml.list` and `.json` will be deleted before running script')
+
+    arguments = parser.parse_args()
+
+    # todo: implement logger mechanism and log properly information
+    # patch logging level to objects
+    debug_levels = {'critical': logging.CRITICAL, 'error': logging.ERROR, 'warning': logging.WARNING,
+                    'info': logging.INFO, 'debug': logging.DEBUG, 'notset': logging.NOTSET}
+    arguments.debug = debug_levels[arguments.debug]
+
+    return arguments
+
 if __name__ == "__main__":
+    args = menu()
+
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
     # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
@@ -215,6 +240,7 @@ if __name__ == "__main__":
     with open("interesting_event_ids.json", "r") as readfile:
         interesting_event_ids = json.loads(readfile.read())
 
+    event_file = args.event_file
 
     # interestingeventids = {1100: "The event logging service has shut down",
     #                        1101: "Audit events have been dropped by the transport.",
@@ -259,45 +285,45 @@ if __name__ == "__main__":
     # todo: append to the logs generated the meaning of the EventID that was filtered
     # todo: have a better way of collecting events and figuring out if penetration did take place -> for example chained events that describe malware actions
     auditlogscleared = [x for x in interesting_event_ids.keys() if "The audit log was cleared" in interesting_event_ids[x]][0]
-    e_auditlogscleared = collect_events(filter="Event/System[EventID={}]".format(auditlogscleared))
+    e_auditlogscleared = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(auditlogscleared))
 
     auditchanges = [x for x in interesting_event_ids.keys() if "System audit policy was changed" in interesting_event_ids[x]][0]
-    e_auditchanges = collect_events(filter="Event/System[EventID={}]".format(auditchanges))
+    e_auditchanges = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(auditchanges))
 
     logons = [x for x in interesting_event_ids.keys() if "An account was successfully logged on" in interesting_event_ids[x]][0]
-    e_logons = collect_events(filter="Event/System[EventID={}]".format(logons), suffix="-"+"-".join(interesting_event_ids[logons].split(" ")))
+    e_logons = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(logons), suffix="-"+"-".join(interesting_event_ids[logons].split(" ")))
 
     logouts = [x for x in interesting_event_ids.keys() if "An account was logged off" in interesting_event_ids[x]][0]
-    e_logouts = collect_events(filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interesting_event_ids[logouts].split(" ")))
+    e_logouts = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interesting_event_ids[logouts].split(" ")))
 
     # collect multiple events in a single list, but it will generate different files
     # todo: need to be able to skip printing of files before processing is finished
     kerberos = [x for x in interesting_event_ids.keys() if "Kerberos" in interesting_event_ids[x]]
     print("Processing kerberos events: [{}]".format(kerberos))
     e_kerberos = []
-    [ e_kerberos.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in kerberos ]
+    [ e_kerberos.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in kerberos ]
 
     firewall = [x for x in interesting_event_ids.keys() if "Firewall" in interesting_event_ids[x]]
     print("Processing firewall events: [{}]".format(firewall))
     e_firewall = []
-    [ e_firewall.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in firewall ]
+    [ e_firewall.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in firewall ]
 
     ipsec = [x for x in interesting_event_ids.keys() if "IPsec" in interesting_event_ids[x]]
     print("Processing ipsec events: [{}]".format(ipsec))
     e_ipsec = []
-    [ e_ipsec.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in ipsec ]
+    [ e_ipsec.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in ipsec ]
 
     crypto = [x for x in interesting_event_ids.keys() if "crypto" in interesting_event_ids[x]]
     print("Processing ipsec events: [{}]".format(crypto))
     e_crypto = []
-    [e_crypto.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
+    [ e_crypto.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
     all = [ x for x in interesting_event_ids.keys() ]
     content = "Advapi"
     print("Processing all events for specific content: [{}]".format(content))
     e_all = []
     for x in all:
-        e = collect_events(filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
+        e = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
         for y in e:
             if content in y:
                 e_all.append(y)
