@@ -5,6 +5,7 @@ from xml.dom.minidom import parseString as xml_parse_string
 import json
 import argparse
 import logging
+import time
 
 # todo: add a config file and use those values from there instead of hardcoding here
 CONSOLE_ENCODING = "UTF-8"
@@ -12,6 +13,39 @@ FILE_ENCODING = "UTF-16-le"
 NULL_WCHAR = '\x00'
 DUMP_EXTENSION = ".xml.list"
 DUMP_EXPORT_FOLDER = r"%HomeDrive%\Users\%Username%\downloads"
+
+
+DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
+LOG_FORMATTER = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(message)s', datefmt=DATETIME_FORMAT)
+LOGGER = logging.Logger(__file__)
+
+def print_time(time):
+    miliseconds = time * 1000 % 1000
+    seconds = time % 60
+    time /= 60
+    minutes = time % 60
+    time /= 60
+    hours = time % 24
+    time /= 24
+    days = time
+    return "%ddays %.2d:%.2d:%.2d.%.3d" % (days, hours, minutes, seconds, miliseconds)
+
+
+def timeit(f):
+    """
+    help: [ https://stackoverflow.com/questions/1622943/timeit-versus-timing-decorator ]
+    :param f:
+    :return:
+    """
+    def timed(*args, **kw):
+        ts = time.time()
+        LOGGER.debug('>>> func:[{}] started @ [{}]'.format(f.__name__, ts))
+        result = f(*args, **kw)
+        te = time.time()
+        LOGGER.debug('<<< func:[{}] ended @ [{}]'.format(f.__name__, te))
+        LOGGER.info('=== func:[{}] took: [{}]'.format(f.__name__, print_time(te - ts)))
+        return result
+    return timed
 
 
 def search_for_executable(path=os.path.abspath(os.path.dirname(__file__)), executable="windows-event-viewer.exe"):
@@ -230,6 +264,11 @@ def menu():
 if __name__ == "__main__":
     args = menu()
 
+    LOGGER.setLevel(args.debug)
+    handler = logging.StreamHandler()
+    handler.setFormatter(LOG_FORMATTER)
+    LOGGER.addHandler(handler)
+
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
     # help: [ https://www.manageengine.com/network-monitoring/Eventlog_Tutorial_Part_II.html ]
@@ -239,6 +278,7 @@ if __name__ == "__main__":
     interesting_event_ids = []
     with open("interesting_event_ids.json", "r") as readfile:
         interesting_event_ids = json.loads(readfile.read())
+        LOGGER.info("Loaded [{}] event IDs from file".format(len(interesting_event_ids)))
 
     event_file = args.event_file
 
@@ -299,28 +339,28 @@ if __name__ == "__main__":
     # collect multiple events in a single list, but it will generate different files
     # todo: need to be able to skip printing of files before processing is finished
     kerberos = [x for x in interesting_event_ids.keys() if "Kerberos" in interesting_event_ids[x]]
-    print("Processing kerberos events: [{}]".format(kerberos))
+    LOGGER.info("Processing kerberos events: [{}]".format(kerberos))
     e_kerberos = []
     [ e_kerberos.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in kerberos ]
 
     firewall = [x for x in interesting_event_ids.keys() if "Firewall" in interesting_event_ids[x]]
-    print("Processing firewall events: [{}]".format(firewall))
+    LOGGER.info("Processing firewall events: [{}]".format(firewall))
     e_firewall = []
     [ e_firewall.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in firewall ]
 
     ipsec = [x for x in interesting_event_ids.keys() if "IPsec" in interesting_event_ids[x]]
-    print("Processing ipsec events: [{}]".format(ipsec))
+    LOGGER.info("Processing ipsec events: [{}]".format(ipsec))
     e_ipsec = []
     [ e_ipsec.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in ipsec ]
 
     crypto = [x for x in interesting_event_ids.keys() if "crypto" in interesting_event_ids[x]]
-    print("Processing ipsec events: [{}]".format(crypto))
+    LOGGER.info("Processing ipsec events: [{}]".format(crypto))
     e_crypto = []
     [ e_crypto.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
     all = [ x for x in interesting_event_ids.keys() ]
     content = "Advapi"
-    print("Processing all events for specific content: [{}]".format(content))
+    LOGGER.info("Processing all events for specific content: [{}]".format(content))
     e_all = []
     for x in all:
         e = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
