@@ -6,6 +6,7 @@ import json
 import argparse
 import logging
 import time
+import datetime
 
 import xmltodict
 
@@ -378,6 +379,13 @@ def menu():
 
 if __name__ == "__main__":
     args = menu()
+
+    # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
+    # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
+    data_string = "2022-08-26T10:08:18.371409200Z"
+    st = datetime.datetime.fromisoformat(data_string[:-4])
+    # format_regex = "%Y-%m-%dT%H:%M:%S.%f"
+    # t = time.strptime(data_string[:-4], format_regex)
 
     handler = logging.StreamHandler()
     handler.setFormatter(LOG_FORMATTER)
