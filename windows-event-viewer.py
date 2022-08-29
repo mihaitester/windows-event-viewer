@@ -75,7 +75,8 @@ def process_xml_events(xml_events=[]):
             try:
                 system[key] = xml_event.getElementsByTagName("Keywords")[0].childNodes[0].nodeValue
             except:
-                print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+                # todo: print only in debug mode
+                # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
                 system[key] = ""
 
         execution_processid = xml_event.getElementsByTagName("Execution")[0].getAttribute("ProcessID")
@@ -127,7 +128,8 @@ def process_xml_events(xml_events=[]):
             try:
                 eventdata[key] = [x for x in xml_event.getElementsByTagName("Data") if x.getAttribute("Name") == key][0].childNodes[0].nodeValue
             except:
-                print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
+                # todo: print only in debug mode
+                # print("Failed to extract value for key [{}] for item [{}]".format(key, item)) # note: only one event presented error
                 eventdata[key] = ""
 
         # todo: another big one, basically the meaning of some of the values in the logs, numbers are hard to understand by humans - need to create mappings of what values mean - this cannot be skipped with `xmltodict`
@@ -167,7 +169,7 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
         print("Captured generated file [{}]".format(generated_file))
     except:
         print("Failed to generate [{}] export of requested events [{}]".format(DUMP_EXTENSION, filter))
-        generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
+        # generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
         return []
 
     # todo: process multiple generated files and collect different classes of events for processing
