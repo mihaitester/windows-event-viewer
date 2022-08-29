@@ -166,8 +166,8 @@ def collect_events(event_file=r"%SystemRoot%\System32\Winevt\Logs\Security.evtx"
         print("Captured generated file [{}]".format(generated_file))
     except:
         print("Failed to generate [{}] export of requested events".format(DUMP_EXTENSION))
+        generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
         return []
-        # generated_file = files_after[len(files_after) - 1]  # todo: added for debug, should remove afterwards
 
     # todo: process multiple generated files and collect different classes of events for processing
     events = []
@@ -260,5 +260,11 @@ if __name__ == "__main__":
 
     logouts = [x for x in interesting_event_ids.keys() if "An account was logged off" in interesting_event_ids[x]][0]
     e_logouts = collect_events(filter="Event/System[EventID={}]".format(logouts), suffix="-"+"-".join(interesting_event_ids[logouts].split(" ")))
+
+    # collect multiple events in a single list, but it will generate different files
+    # todo: need to be able to skip printing of files before processing is finished
+    kerberos = [x for x in interesting_event_ids.keys() if "Kerberos" in interesting_event_ids[x]]
+    e_kerberos = []
+    [ e_kerberos.extend(collect_events(filter="Event/System[EventID={}]".format(x), suffix="-"+"-".join(interesting_event_ids[x].split(" ")))) for x in kerberos ]
 
     pass # used for debugging
