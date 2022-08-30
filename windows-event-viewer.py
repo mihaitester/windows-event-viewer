@@ -1,6 +1,7 @@
 import os
 import glob
 import subprocess
+import sys
 from xml.dom.minidom import parseString as xml_parse_string
 import json
 import argparse
@@ -37,6 +38,19 @@ def print_time(time):
     time /= 24
     days = time
     return "%ddays %.2d:%.2d:%.2d.%.3d" % (days, hours, minutes, seconds, miliseconds)
+
+
+def print_size(size):
+    bytes = size % 1024
+    size /= 1024
+    kbytes = size % 1024
+    size /= 1024
+    mbytes = size % 1024
+    size /= 1024
+    gbytes = size % 1024
+    size /= 1024
+    tbytes = size
+    return "%.2fTB %.2fGB %.2fMB %.2fKB %.2fB" % (tbytes, gbytes, mbytes, kbytes, bytes)
 
 
 def timeit(f):
@@ -272,6 +286,8 @@ def load_interesting_event_ids(file="interesting_event_ids.json"):
     return interesting_event_ids
 
 
+CACHED_EVENTS = {}
+@timeit
 def get_events_between_dates(content="Advapi",
                              start_date=datetime.datetime.now() - datetime.timedelta(days=7),
                              end_date=datetime.datetime.now(), # end_date = datetime.datetime.strptime("2022-08-30", DATE_FORMAT)
@@ -279,24 +295,34 @@ def get_events_between_dates(content="Advapi",
                              event_ids=[x for x in load_interesting_event_ids().keys()],
                              event_file = DEFAULT_EVENT_FILE):
     LOGGER.info("Processing all events for specific content: [{}]".format(content))
+
     e_all = []
-    for x in event_ids:
-        # todo: cache somehow all events instead of doing calls again over the files, basically allow multiple `get_events_between_dates` calls using in memory data
-        e = collect_events(event_file=event_file,
-                           filter="Event/System[EventID={}]".format(x),
-                           suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
+    # note: cache somehow all events instead of doing calls again over the files, basically allow multiple `get_events_between_dates` calls using in memory data
+    if event_file not in CACHED_EVENTS.keys():
+        for x in event_ids:
+            e = collect_events(event_file=event_file,
+                               filter="Event/System[EventID={}]".format(x),
+                               suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
+            e_all.append(e)
+        CACHED_EVENTS.update({event_file:e_all}) # cache all events regardless of content
+        LOGGER.info("Cached events [{}] from [{}] taking up [{}].".format(len(CACHED_EVENTS[event_file]), event_file, print_size(sys.getsizeof(CACHED_EVENTS[event_file]))))
+    else:
+        e_all = CACHED_EVENTS[event_file]
+
+    e_content = []
+    for e in e_all:
         for y in e:
             if content != "":
                 if content in str(y):
-                    e_all.append(y)
+                    e_content.append(y)
                 else:
                     pass
             else:
                 # note: if content is not provided, then include all events
-                e_all.append(y)
+                e_content.append(y)
 
     e_dated = []
-    for event in e_all:
+    for event in e_content:
         # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
         # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
         # data_string = "2022-08-24T10:08:18.371409200Z"
