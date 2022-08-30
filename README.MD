@@ -5,7 +5,7 @@ I was thinking of trying to find security events that could indicate if my compu
 
 Main difference from working with `Python` is that in `C/C++` developer has to keep track of variables and do memory management, and it takes a lot more volume of code to achieve same results, like for example working with timestamps and formatting of files. Also exception management and error recovery are way harder to do in `C/C++`. But once the code works and is debugged, it will run way faster and hopefully I can get some `timeit` wrapper done for `C/C++` to compare results.
 
-# Usage
+# Usage windows-event-viewer.exe
 > windows-event-viewer.exe `PathToEventFile` `XPathFormattedQuery` `PathToDumpFolder`
 * `PathToEventFile` - `c:\Windows\System32\Winevt\Logs\Security.evtx` or `%SystemRoot%\System32\Winevt\Logs\Security.evtx`
 * `XPathFormattedQuery` - `Event/System[EventID=4624]`
@@ -18,6 +18,10 @@ For now the executable generates an `.xml` file containing the events from the r
     * Press `WinKey` + `X`, which opens the command popup, and then press `A` to open a `Windows Powershell` with admin rights. 
     * Then use, to navigate to current directory and execute the commandline from above, where `PathToScript` is the folder containing `windows-event-viwere.py` 
       > cd `PathToScript`
+
+# Usage windows-event-viewer.py
+> python windows-event-viewer.py `-f [PathToEventFile]`
+- `PathToEventFile` - In order to avoid the caveat, first copy the `.evtx` log file you are interested in outside the default folder and into a folder that does not require admin rights 
 
 # Requirements
 * `Visual Studio Community` - https://visualstudio.microsoft.com/vs/community/ - need to install the `Desktop development with C++` package - needed to import `Windows Event Viewer` solution and to compile and build the `windows-event-viewer.exe` tool which is used by the python script

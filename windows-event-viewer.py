@@ -22,6 +22,7 @@ DUMP_EXPORT_FOLDER = r"%HomeDrive%\Users\%Username%\downloads"
 DUMP_EXTENSION = ".xml.list"
 
 
+DATE_FORMAT = "%Y-%m-%d"
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 LOG_FORMATTER = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(message)s', datefmt=DATETIME_FORMAT)
 LOGGER = logging.Logger(__file__)
@@ -271,6 +272,46 @@ def load_interesting_event_ids(file="interesting_event_ids.json"):
     return interesting_event_ids
 
 
+def get_events_between_dates(content="Advapi",
+                             start_date=datetime.datetime.now() - datetime.timedelta(days=7),
+                             end_date=datetime.datetime.now(), # end_date = datetime.datetime.strptime("2022-08-30", DATE_FORMAT)
+                             interesting_event_ids=load_interesting_event_ids(),
+                             event_ids=[x for x in load_interesting_event_ids().keys()],
+                             event_file = DEFAULT_EVENT_FILE):
+    LOGGER.info("Processing all events for specific content: [{}]".format(content))
+    e_all = []
+    for x in event_ids:
+        # todo: cache somehow all events instead of doing calls again over the files, basically allow multiple `get_events_between_dates` calls using in memory data
+        e = collect_events(event_file=event_file,
+                           filter="Event/System[EventID={}]".format(x),
+                           suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
+        for y in e:
+            if content != "":
+                if content in str(y):
+                    e_all.append(y)
+                else:
+                    pass
+            else:
+                # note: if content is not provided, then include all events
+                e_all.append(y)
+
+    e_dated = []
+    for event in e_all:
+        # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
+        # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
+        # data_string = "2022-08-24T10:08:18.371409200Z"
+        # st = datetime.datetime.fromisoformat(data_string[:-4])
+        # format_regex = "%Y-%m-%dT%H:%M:%S.%f"
+        # t = time.strptime(data_string[:-4], format_regex)
+        e_datetime = datetime.datetime.fromisoformat(event["Event"]["System"]["TimeCreated"]["@SystemTime"][:-4])
+        if e_datetime >= start_date and e_datetime <= end_date:
+            e_dated.append(event)
+    with open(os.path.join(interpolate_path(DUMP_EXPORT_FOLDER),
+                           datetime.datetime.now().strftime(DATETIME_FORMAT) + "-events-between-{}-and-{}.json".format(
+                                   start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT))),
+              "w") as writefile:
+        writefile.write(json.dumps(e_dated, indent=4))
+
 @timeit
 def process_audit(event_file=DEFAULT_EVENT_FILE, interesting_event_ids=load_interesting_event_ids()):
 
@@ -312,34 +353,9 @@ def process_audit(event_file=DEFAULT_EVENT_FILE, interesting_event_ids=load_inte
     e_crypto = []
     [ e_crypto.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
-
-    # todo: make a method of some sort, which filters all events containing some string, between some dates
-    all = [ x for x in interesting_event_ids.keys() ]
-    content = "Advapi"
-    LOGGER.info("Processing all events for specific content: [{}]".format(content))
-    e_all = []
-    for x in all:
-        e = collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))
-        for y in e:
-            if content in str(y):
-                e_all.append(y)
-
-    DATE_FORMAT = "%Y-%m-%d"
-    start_date = datetime.datetime.strptime("2022-08-26", DATE_FORMAT)
-    end_date = datetime.datetime.strptime("2022-08-30", DATE_FORMAT)
-    e_dated = []
-    for event in e_all:
-        # help: [ https://www.digitalocean.com/community/tutorials/python-string-to-datetime-strptime ]
-        # help: [ https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime ]
-        # data_string = "2022-08-24T10:08:18.371409200Z"
-        # st = datetime.datetime.fromisoformat(data_string[:-4])
-        # format_regex = "%Y-%m-%dT%H:%M:%S.%f"
-        # t = time.strptime(data_string[:-4], format_regex)
-        e_datetime = datetime.datetime.fromisoformat(event["Event"]["System"]["TimeCreated"]["@SystemTime"][:-4])
-        if e_datetime >= start_date and e_datetime <= end_date:
-            e_dated.append(event)
-    with open(os.path.join(interpolate_path(DUMP_EXPORT_FOLDER), datetime.datetime.now().strftime(DATETIME_FORMAT) + "-events-between-{}-and-{}.json".format(start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT))), "w") as writefile:
-        writefile.write(json.dumps(e_dated, indent=4))
+    # todo: provide some suffix to differentiate files and have easily accessible reports
+    get_events_between_dates(content="", event_file=event_file) # get all events
+    get_events_between_dates(event_file=event_file) # get events with content "Advapi"
 
 
 def menu():
@@ -376,7 +392,6 @@ if __name__ == "__main__":
 
     # todo: need use a service to collect timestamps and processID with all process data -> track back which process and what command line was executing when an event was triggered
 
-    # todo: need to parse timestamps and filter out events only between 2 dates: "2022-08-26T10:08:18.371409200Z"
     process_audit(args.event_file)
 
     pass # used for debugging
