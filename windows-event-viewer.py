@@ -78,6 +78,7 @@ def search_for_executable(path=os.path.abspath(os.path.dirname(__file__)), execu
     :return:
     """
     executable_path = [x for x in glob.glob(os.path.join(path, "**/*"), recursive=True) if executable == os.path.basename(x)][0] # todo: instead of return first compiled executable, return the one that matches OS architecture
+    LOGGER.debug("Found executable [{}]".format(executable_path))
     return executable_path
 
 
@@ -224,7 +225,6 @@ def collect_events(event_file=DEFAULT_EVENT_FILE,
                    filter=DEFAULT_FILTER, # help: [ https://en.wikipedia.org/wiki/Event_Viewer ] - more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter
                    export_folder=DUMP_EXPORT_FOLDER,
                    suffix=""):
-    print(search_for_executable())
     interpolated_export_folder = interpolate_path(DUMP_EXPORT_FOLDER)
 
     # strip illegal path characters from suffix
@@ -293,7 +293,8 @@ def get_events_between_dates(content="Advapi",
                              end_date=datetime.datetime.now(), # end_date = datetime.datetime.strptime("2022-08-30", DATE_FORMAT)
                              interesting_event_ids=load_interesting_event_ids(),
                              event_ids=[x for x in load_interesting_event_ids().keys()],
-                             event_file = DEFAULT_EVENT_FILE):
+                             event_file = DEFAULT_EVENT_FILE,
+                             suffix=""):
     LOGGER.info("Processing all events for specific content: [{}]".format(content))
 
     e_all = []
@@ -333,8 +334,8 @@ def get_events_between_dates(content="Advapi",
         if e_datetime >= start_date and e_datetime <= end_date:
             e_dated.append(event)
     with open(os.path.join(interpolate_path(DUMP_EXPORT_FOLDER),
-                           datetime.datetime.now().strftime(DATETIME_FORMAT) + "-events-between-{}-and-{}.json".format(
-                                   start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT))),
+                           datetime.datetime.now().strftime(DATETIME_FORMAT) + "-events-between-{}-and-{}".format(
+                                   start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT)) + suffix + ".json"),
               "w") as writefile:
         writefile.write(json.dumps(e_dated, indent=4))
 
@@ -380,8 +381,8 @@ def process_audit(event_file=DEFAULT_EVENT_FILE, interesting_event_ids=load_inte
     [ e_crypto.extend(collect_events(event_file=event_file, filter="Event/System[EventID={}]".format(x), suffix="-" + "-".join(interesting_event_ids[x].split(" ")))) for x in crypto ]
 
     # todo: provide some suffix to differentiate files and have easily accessible reports
-    get_events_between_dates(content="", event_file=event_file) # get all events
-    get_events_between_dates(event_file=event_file) # get events with content "Advapi"
+    get_events_between_dates(content="", event_file=event_file, suffix="-all") # get all events
+    get_events_between_dates(content="Advapi", event_file=event_file, suffix="-advapi") # get events with content "Advapi"
 
 
 def menu():
