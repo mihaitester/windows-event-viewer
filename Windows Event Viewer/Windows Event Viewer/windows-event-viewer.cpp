@@ -33,6 +33,55 @@
 
 #define DUMP_EXTENSION L".xml.list"
 
+
+
+// ************************************ MACROS ************************************
+// help: [ https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c ] - writing a timing macro for C/C++
+// help: [ https://softwareengineering.stackexchange.com/questions/439422/using-a-preprocessor-macro-to-wrap-functions ] - wrapping functions using preprocessor
+// help: [ https://stackoverflow.com/questions/14391327/how-to-get-duration-as-int-millis-and-float-seconds-from-chrono ] - casting duration to double and meaning seconds
+// help: [ https://stackoverflow.com/questions/41288780/convert-va-args-to-string ] - trying to get function name, but getting error `Expressions of type void cannot be converted to other types`
+// help: [ https://stackoverflow.com/questions/733056/is-there-a-way-to-get-function-name-inside-a-c-function ] - getting function name from __FUNCTION__ macro
+// help: [ https://stackoverflow.com/questions/38466608/can-you-convert-func-to-a-wchar-t-at-compile-time ] - use __FUCNTIONW__ instead - this gives out the function where wrapper is called, and not the function being wrapped
+#ifndef TIMEIT
+#include <chrono>
+using namespace std;
+
+// todo: figure out if the method being called can be picked up somehow, or need to pass in a string to get a legit value
+#define TIMEIT(text, ...) {                                                             \
+auto begin = std::chrono::steady_clock::now();                                          \
+__VA_ARGS__;                                                                            \
+auto duration = std::chrono::steady_clock::now() - begin;                               \
+wchar_t funcName[1024];                                                                 \
+funcName[0] = L'\0';                                                                    \
+/*swprintf_s(funcName, 1024, __FUNCTIONW__);*/                                              \
+swprintf_s(funcName, 1024, text);                                                       \
+auto secs = std::chrono::duration_cast<std::chrono::duration<float>>(duration).count(); \
+wprintf(L"Function call [%s] took [%f] seconds\n", funcName, secs);                     \
+}
+#endif
+
+//auto execution_time_ns = duration_cast<nanoseconds>(end_time - start_time).count();
+//auto execution_time_ms = duration_cast<microseconds>(end_time - start_time).count();
+//auto execution_time_sec = duration_cast<seconds>(end_time - start_time).count();
+//auto execution_time_min = duration_cast<minutes>(end_time - start_time).count();
+//auto execution_time_hour = duration_cast<hours>(end_time - start_time).count();
+//
+//cout << "\nExecution Time: ";
+//if (execution_time_hour > 0)
+//cout << "" << execution_time_hour << " Hours, ";
+//if (execution_time_min > 0)
+//cout << "" << execution_time_min % 60 << " Minutes, ";
+//if (execution_time_sec > 0)
+//cout << "" << execution_time_sec % 60 << " Seconds, ";
+//if (execution_time_ms > 0)
+//cout << "" << execution_time_ms % long(1E+3) << " MicroSeconds, ";
+//if (execution_time_ns > 0)
+//cout << "" << execution_time_ns % long(1E+6) << " NanoSeconds, ";
+
+// **************************************** ****************************************
+
+
+
 // ************************************ EVENTS ************************************
 void DisplayError(LPCWSTR lpszFunction)
 // Routine Description:
@@ -392,9 +441,13 @@ LPWSTR InterpolateString(LPCWSTR string)
     DWORD status = ERROR_SUCCESS;
     DWORD lastError = ERROR_SUCCESS;
 
-    ZeroMemory(buffer, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+    //ZeroMemory(buffer, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+    buffer[0] = L'\0'; // note: in order to be able to use string copy functions
+    //env_var_name[0] = L'\0';
+    //env_var_value[0] = L'\0';
 
-    for (int i = 0, j = 0; i <= wcslen(string); i++)
+    int i, j;
+    for (i = 0, j = 0; i < wcslen(string); i++)
     {
         if (L'%' == string[i]) // todo: need to validate that there are an even number of L'%' wchars, or the interpolation fails
         {
@@ -419,6 +472,7 @@ LPWSTR InterpolateString(LPCWSTR string)
             // else // note: related to [comment1], continue even if variable was not found
             //{
             // note: copy the interpolated value into the buffer containing raw path
+            buffer[j] = L'\0'; // note: needed to be able to use string methods
             wcscat_s(buffer, MAX_PATH_LONG, env_var_value);
             j += wcslen(env_var_value);
             //}
@@ -430,6 +484,7 @@ LPWSTR InterpolateString(LPCWSTR string)
             j++;
         }
     }
+    buffer[j] = L'\0'; // note: needed to be able to use string methods
 
     // note: before returning, use a smaller capped buffer, that is precisely the size of the string
     result = (LPWSTR)malloc((wcslen(buffer) + 1) * sizeof(WCHAR));
@@ -452,8 +507,10 @@ LPWSTR ConstructFilename(LPCWSTR pwsDumpFolder, LPCWSTR pwsSuffix)
     DWORD status = ERROR_SUCCESS;
     DWORD lastError = ERROR_SUCCESS;
 
-    ZeroMemory(buffer, MAX_PATH_LONG); // note: in order to be able to use string copy functions
-    ZeroMemory(module, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+    //ZeroMemory(buffer, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+    //ZeroMemory(module, MAX_PATH_LONG); // note: in order to be able to use string copy functions
+    buffer[0] = L'\0'; // note: in order to be able to use string copy functions
+    module[0] = L'\0'; // note: in order to be able to use string copy functions
 
     LPWSTR interpolated = NULL;
     interpolated = InterpolateString(pwsDumpFolder);
@@ -553,6 +610,7 @@ void Test3()
     try {
         username = InterpolateString(L"%username%");
         interpolated = InterpolateString(pwsDumpFolder);
+        wprintf(L"test");
         wprintf(L"InterpolateString(%s)=%s\n", pwsDumpFolder, interpolated);
         if(wcslen(interpolated) != wcslen(L"c:\\Users\\") + wcslen(username) + wcslen(L"\\Downloads"))
             throw "InterpolateString test failed";
@@ -595,11 +653,11 @@ void RunTests()
     // help: [ https://docs.microsoft.com/en-us/dotnet/visual-basic/language-reference/statements/try-catch-finally-statement ] - this is not valid for `.cpp` for some reason
     // help: [ https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?source=recommendations&view=msvc-170 ]
     int TOTAL_TESTS = 4; 
-    
-    Test1();
-    Test2();
-    Test3();
-    Test4();
+
+    TIMEIT(L"Test1", Test1());
+    TIMEIT(L"Test2", Test2());
+    TIMEIT(L"Test3", Test3());
+    TIMEIT(L"Test4", Test4());
 
     if (FAILED_TESTS > 0)
         wprintf(L"\n>>> Failed [%d] out of [%d] executed tests from [%d] total number of tests!\n\n", FAILED_TESTS, EXECUTED_TESTS, TOTAL_TESTS);
