@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <winevt.h>
 #include <strsafe.h>
+#include <chrono>
+
+using namespace std;
 
 #pragma comment(lib, "wevtapi.lib")
 
@@ -36,48 +39,47 @@
 
 
 // ************************************ MACROS ************************************
-// help: [ https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c ] - writing a timing macro for C/C++
+// help: [ https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c ] - writing a timing macro for C/C++, has a mistake in using `execution_time` but its fixed in `TIMEIT_PRETTY`
 // help: [ https://softwareengineering.stackexchange.com/questions/439422/using-a-preprocessor-macro-to-wrap-functions ] - wrapping functions using preprocessor
 // help: [ https://stackoverflow.com/questions/14391327/how-to-get-duration-as-int-millis-and-float-seconds-from-chrono ] - casting duration to double and meaning seconds
 // help: [ https://stackoverflow.com/questions/41288780/convert-va-args-to-string ] - trying to get function name, but getting error `Expressions of type void cannot be converted to other types`
 // help: [ https://stackoverflow.com/questions/733056/is-there-a-way-to-get-function-name-inside-a-c-function ] - getting function name from __FUNCTION__ macro
 // help: [ https://stackoverflow.com/questions/38466608/can-you-convert-func-to-a-wchar-t-at-compile-time ] - use __FUCNTIONW__ instead - this gives out the function where wrapper is called, and not the function being wrapped
 #ifndef TIMEIT
-#include <chrono>
-using namespace std;
-
 // todo: figure out if the method being called can be picked up somehow, or need to pass in a string to get a legit value
 #define TIMEIT(text, ...) {                                                             \
 auto begin = std::chrono::steady_clock::now();                                          \
 __VA_ARGS__;                                                                            \
 auto duration = std::chrono::steady_clock::now() - begin;                               \
-wchar_t funcName[1024];                                                                 \
-funcName[0] = L'\0';                                                                    \
+/*wchar_t funcName[1024];*/                                                                 \
+/*funcName[0] = L'\0';*/                                                                    \
 /*swprintf_s(funcName, 1024, __FUNCTIONW__);*/                                              \
-swprintf_s(funcName, 1024, text);                                                       \
+/*swprintf_s(funcName, 1024, text);*/                                                       \
 auto secs = std::chrono::duration_cast<std::chrono::duration<float>>(duration).count(); \
-wprintf(L"Function call [%s] took [%f] seconds\n", funcName, secs);                     \
+wprintf(L"\n>>> Tagged code [%s] took [%f] seconds\n\n", text, secs);                   \
 }
-#endif
+#endif // TIMEIT
 
-//auto execution_time_ns = duration_cast<nanoseconds>(end_time - start_time).count();
-//auto execution_time_ms = duration_cast<microseconds>(end_time - start_time).count();
-//auto execution_time_sec = duration_cast<seconds>(end_time - start_time).count();
-//auto execution_time_min = duration_cast<minutes>(end_time - start_time).count();
-//auto execution_time_hour = duration_cast<hours>(end_time - start_time).count();
-//
-//cout << "\nExecution Time: ";
-//if (execution_time_hour > 0)
-//cout << "" << execution_time_hour << " Hours, ";
-//if (execution_time_min > 0)
-//cout << "" << execution_time_min % 60 << " Minutes, ";
-//if (execution_time_sec > 0)
-//cout << "" << execution_time_sec % 60 << " Seconds, ";
-//if (execution_time_ms > 0)
-//cout << "" << execution_time_ms % long(1E+3) << " MicroSeconds, ";
-//if (execution_time_ns > 0)
-//cout << "" << execution_time_ns % long(1E+6) << " NanoSeconds, ";
-
+// help: [ https://stackoverflow.com/questions/5907031/printing-the-correct-number-of-decimal-points-with-cout ] - how to properly format decimals and floats
+// help: [ https://www.programiz.com/cpp-programming/library-function/cwchar/wprintf ] - format `%[flags][width][.precision][length]specifier`
+// help: [ https://stackoverflow.com/questions/14617865/how-do-get-numbers-to-display-as-two-digits-in-c ] - more formatting examples
+#ifndef TIMEIT_PRETTY
+#define TIMEIT_PRETTY(text, ...) {                                                                                                              \
+auto start_time = std::chrono::steady_clock::now();                                                                                             \
+__VA_ARGS__;                                                                                                                                    \
+auto end_time = std::chrono::steady_clock::now();                                                                                               \
+auto execution_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count() % long(1E+9);                      \
+auto execution_time_mis = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count() % long(1E+6);                    \
+auto execution_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count() % long(1E+3);                     \
+auto execution_time_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() % 60;                                 \
+auto execution_time_min = std::chrono::duration_cast<std::chrono::minutes>(end_time - start_time).count() % 60;                                 \
+auto execution_time_hour = std::chrono::duration_cast<std::chrono::hours>(end_time - start_time).count();                                       \
+/*wprintf(L"\n>>> Tagged code [%s] took [%02d] hours [%02d] minutes [%02d] seconds [%d] miliseconds [%d] microseconds [%d] nanoseconds\n\n",*/      \
+/*    text, execution_time_hour, execution_time_min, execution_time_sec, execution_time_ms, execution_time_mis, execution_time_ns);         */      \
+wprintf(L"\n>>> Tagged code [%s] took [%02d:%02d:%02d]hours:minutes:seconds [%03d.%03d.%03d]ms.micro.nano\n\n",                                 \
+    text, execution_time_hour, execution_time_min, execution_time_sec, execution_time_ms, execution_time_mis, execution_time_ns);               \
+}
+#endif // TIMEIT_PRETTY
 // **************************************** ****************************************
 
 
@@ -660,9 +662,9 @@ void RunTests()
     TIMEIT(L"Test4", Test4());
 
     if (FAILED_TESTS > 0)
-        wprintf(L"\n>>> Failed [%d] out of [%d] executed tests from [%d] total number of tests!\n\n", FAILED_TESTS, EXECUTED_TESTS, TOTAL_TESTS);
+        wprintf(L"\n=== Failed [%d] out of [%d] executed tests from [%d] total number of tests!\n\n", FAILED_TESTS, EXECUTED_TESTS, TOTAL_TESTS);
     else
-        wprintf(L"\n>>> Successfully ran [%d] out of [%d] total number of tests!\n\n", EXECUTED_TESTS, TOTAL_TESTS);
+        wprintf(L"\n=== Successfully ran [%d] out of [%d] total number of tests!\n\n", EXECUTED_TESTS, TOTAL_TESTS);
 }
 // **************************************** ****************************************
 
@@ -731,8 +733,8 @@ cleanup:
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
 #ifdef _DEBUG
-    ShowArguments(argc, argv);
-    RunTests(); // start by running some tests, only in debug mode
+    TIMEIT_PRETTY(L"ShowArguments", ShowArguments(argc, argv));
+    TIMEIT_PRETTY(L"RunTests",RunTests()); // start by running some tests, only in debug mode
 #endif // _DEBUG
 
     DWORD status = ERROR_SUCCESS;
