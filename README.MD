@@ -6,10 +6,11 @@ I was thinking of trying to find security events that could indicate if my compu
 Main difference from working with `Python` is that in `C/C++` developer has to keep track of variables and do memory management, and it takes a lot more volume of code to achieve same results, like for example working with timestamps and formatting of files. Also exception management and error recovery are way harder to do in `C/C++`. But once the code works and is debugged, it will run way faster and hopefully I can get some `timeit` wrapper done for `C/C++` to compare results.
 
 # Usage windows-event-viewer.exe
-> windows-event-viewer.exe `PathToEventFile` `XPathFormattedQuery` `PathToDumpFolder`
+> windows-event-viewer.exe `PathToEventFile` `XPathFormattedQuery` `PathToDumpFolder` `SuffixToAppendToFilename`
 * `PathToEventFile` - example value `c:\Windows\System32\Winevt\Logs\Security.evtx` or `%SystemRoot%\System32\Winevt\Logs\Security.evtx`, however due to the caveat, its better to first copy the file outside `Windows` directory
 * `XPathFormattedQuery` - XPath formatted query, for example `Event/System[EventID=4624]` which will return all events matching the `EventID`. For information visit `https://en.wikipedia.org/wiki/Event_Viewer` - which contains more about `Windows Event Viewer` and `XPath 1.0` limitations in the filter.
 * `PathToDumpFile` - example value `c:\Users\%username%\Downloads`
+* `SuffixToAppendToFilename` - example value `-An-account-was-successfully-logged-on`, it is constructed by `windows-event-viewer.py` from `interesting_event_ids.json` and passed into the argument list
 
 For now the executable generates an `.xml` file containing the events from the requested event file and filtered by the `XPathFormattedQuery`. In the example given all events with `EventID=4624` will be dumped to the file. The file dumped will have a filename with the following structure `[PathToDumpFolder]\<Generated_Timestamp>_windows-event-viewer.xml`. The `<Generated_Timestamp>` is based on local time and has the following structure `YYYY-mm-dd_HH-MM-SS.sss`
 

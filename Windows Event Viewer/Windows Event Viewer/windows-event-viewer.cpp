@@ -737,22 +737,21 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
 #ifdef _DEBUG
     TIMEIT_PRETTY(L"ShowArguments", ShowArguments(argc, argv));
+    TIMEIT_PRETTY(L"ShowEnvironment", ShowEnvironment()); // unuseful for now, but would be useful in the future
     TIMEIT_PRETTY(L"RunTests",RunTests()); // start by running some tests, only in debug mode
 #endif // _DEBUG
 
     if (argc <= 4)
     {
-        wprintf(L"Insufficient arguments provided!\n");
+        wprintf(L"\n!!! Insufficient arguments provided!\n\n");
         ShowArguments(argc, argv);
-        ShowEnvironment();
         PrintHelp(argv); 
         return ERROR_BAD_ARGUMENTS;
     }
     else if (argc > 5)
     {
-        wprintf(L"Too many arguments provided!\n");
+        wprintf(L"\n!!! Too many arguments provided!\n\n");
         ShowArguments(argc, argv);
-        ShowEnvironment();
         PrintHelp(argv);
         return ERROR_BAD_ARGUMENTS;
     }
