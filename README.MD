@@ -39,3 +39,8 @@ The idea overtime is to be able to define some rule sets for actions and then qu
 
 # Considerations
 * `WARNING` - since I do not control the servers of the attached links, especially `# help: [ link ]` or `// help: [ link ]` those can be used by the server owners or `Internet Service Providers` to trackback developers, through logging of `IPAddress`, `OperatingSystem`, `Web Browser`
+* When opening folder instead of solution, need the file `CppProperties.json`. Can find out more about this:
+    * help [ https://code.visualstudio.com/docs/cpp/c-cpp-properties-schema-reference ]
+    * help [ https://docs.microsoft.com/en-us/cpp/build/cppproperties-schema-reference?view=msvc-170 ]
+    * help [ https://developercommunity.visualstudio.com/t/open-folder-cpppropertiesjson-and-tasksvsjson-do-n/903276 ]
+    * help [ https://docs.microsoft.com/en-us/cpp/build/open-folder-projects-cpp?view=msvc-170 ] - explains how to give args to compiler
